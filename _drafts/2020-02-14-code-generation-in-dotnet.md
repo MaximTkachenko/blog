@@ -6,9 +6,9 @@
 
 # Introduction
 
-Code generation is a very interesting topic. Idea to generate methods and classes in runtime sounds like a magic for me. This feature is quite heavily used in guts of DI frameworks, ORMs etc.
+Code generation is a very interesting topic. Idea to generate methods and classes in runtime sounds like a magic for me. This feature is quite heavily used in guts of DI frameworks, ORMs, different mappers etc.
 
-Let's imagine I receive for some source a dictionary in a such format:
+Let's imagine I receive a dictionary from some source in a such format:
 ```c#
 {"Name", "John McClane"},
 {"Age", "33"}
@@ -18,13 +18,15 @@ I want to map this dictionary to any C# type and fill property of C# object if t
 # Plain C#
 
 First of all I want to write a plain C# code for a known type:
-```
+```csharp
 ```
 Quite simple, right? 
 
 # Reflection
 
 Let's level up. 
+```csharp
+```
 
 # Emit il
 
@@ -33,20 +35,27 @@ Documentation from Microsoft: [How to: Define and Execute Dynamic Methods](https
 (https://sharplab.io/)[https://sharplab.io/]
 (ReSharper IL viewer)[https://www.jetbrains.com/help/resharper/Viewing_Intermediate_Language.html]
 
-todo
+```csharp
+```
 
 # Expression trees
 
 Documentation from Microsoft: [How to execute expression trees](https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/concepts/expression-trees/how-to-execute-expression-trees)
 
-todo
+```csharp
+```
 
 # Sigil
 
 Github: [A fail-fast validating helper for .NET CIL generation](https://github.com/kevin-montrose/Sigil)
 
-todo
+```csharp
+```
 
 # Unit tests and benchmarks
 
 todo
+
+# Source code, unit test and benchmarks
+
+todo put git here
