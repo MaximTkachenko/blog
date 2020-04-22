@@ -6,19 +6,48 @@
 
 # Introduction
 
-Code generation is a very interesting topic. Idea to generate methods and classes in runtime sounds like a magic for me. This feature is quite heavily used in guts of DI frameworks, ORMs, different mappers etc.
+Code generation is a very interesting topic. Idea to generate methods and classes in runtime sounds like a magic for me. This feature is quite heavily used in guts of DI frameworks, ORMs, different mappers etc. Now I realized that in the past I have some tasks which could be implemented in very efficient way using code generation. Unfortunately during those times I knew nothing about code generation. And when I heard about it first time I couldn't understand where to start. So here I want to demonstrate how to solve particular problem using metaprogramming approach.
 
-Let's imagine I receive a dictionary from some source in a such format:
+# Task description
+
+Let's imagine our application receives data from some source as a `string[]`:
 ```c#
-{"Name", "John McClane"},
-{"Age", "33"}
+{"John McClane", "4455", "1994-11-05T13:15:30"}
 ```
-I want to map this dictionary to any C# type and fill property of C# object if there is a value in the dictionary for property name and value is convertible into property type. Also I don't want to write code for each class I use. Instead I want to be able to map the dictionary to any C# type. So I don't know target C# type while writing my `mapper`.
+Also I have an attribute class:
+```c#
+public sealed class ArrayIndexAttribute : Attribute
+{
+    public ArrayIndexAttribute(int order)
+    {
+        Order = order;
+    }
+
+    public int Order { get; }
+}
+```
+and a class:
+```c#
+public class Data
+{
+    [ArrayIndex(0)] public string Name { get; set; }
+    [ArrayIndex(2)] public int Number { get; set; }
+    [ArrayIndex(1)] public DateTime Birthday { get; set; }
+}
+```
+I want to set `Number` property if the second element in source array can be casted to type of the property. At the same time I don't want to limit implementation by `Data` only. I want to produce the same mapping procedure for any class. Service interface to produce mapper for arbitary type `T` looks like this:
+```c#
+public interface IParserFactory
+{
+    Func<string[], T> GetArrayIndexParser<T>() where T : new();
+}
+```
 
 # Plain C#
 
 First of all I want to write a plain C# code for a known type:
-```csharp
+```c#
+
 ```
 Quite simple, right? 
 
