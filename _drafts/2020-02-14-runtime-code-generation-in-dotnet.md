@@ -37,6 +37,7 @@ public class Data
     [ArrayIndex(1)] public DateTime Birthday { get; set; } // "1994-11-05T13:15:30"
 }
 ```
+Parsers will support only the following types: string ("John McClane"), DateTime ("1994-11-05T13:15:30") and integer ("4455").
 `Number` property should be set if the second element in source array can be casted to type of the property. At the same time I don't want to limit implementation by `Data` class only. I want to produce the same mapping procedure for any class. For instance, you can take add this code into your application and use it with any class decorated by `ArrayIndexAttribute`. Service interface to produce mapper for arbitary type `T` looks like this:
 ```c#
 public interface IParserFactory
@@ -65,6 +66,7 @@ I want to generate such code for an arbitary type in runtime.
 
 # Reflection
 
+TODO describe workflow
 Let's level up and write it using reflection:
 ```c#
 public class ReflectionParserFactory : IParserFactory
@@ -122,7 +124,22 @@ public class ReflectionParserFactory : IParserFactory
 ```
 It's not actually code generation. Here we wrote generic code to create new instance of class and set properties using reflcetion. But it's slow. If you want to call this code very often it could be an issue. Benchmarks are presented in the last section. I want to implement something more sophisticated.
 
-# Expression trees
+# Code generation
+
+[Why is Reflection slow](https://mattwarren.org/2016/12/14/Why-is-Reflection-slow/)
+TODO describe code generation workflow (generate code for type, compile, cache)
+```c#
+internal static class TypeParsers
+{
+    public static readonly Dictionary<Type, MethodInfo> Parsers = new Dictionary<Type, MethodInfo>
+    {
+        { typeof(int), typeof(int).GetMethod("TryParse", new[] {typeof(string), typeof(int).MakeByRefType()}) },
+        { typeof(DateTime), typeof(DateTime).GetMethod("TryParse", new[] {typeof(string), typeof(DateTime).MakeByRefType()}) }
+    };
+}
+```
+
+## Expression trees
 
 - [How to execute expression trees](https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/concepts/expression-trees/how-to-execute-expression-trees)
 - [Expression classes](https://docs.microsoft.com/en-us/dotnet/api/system.linq.expressions?view=netcore-3.1#classes)
@@ -196,8 +213,9 @@ public class ExpressionTreeParserFactory : IParserFactory
 }
 ```
 
-# Emit il
+## Emit il
 
+- https://docs.microsoft.com/en-us/dotnet/standard/managed-execution-process
 - [How to: Define and Execute Dynamic Methods](https://docs.microsoft.com/en-us/dotnet/framework/reflection-and-codedom/how-to-define-and-execute-dynamic-methods)
 - [OpCodes list](https://docs.microsoft.com/en-us/dotnet/api/system.reflection.emit.opcodes?view=netcore-3.1#fields)
 - [https://sharplab.io/](https://sharplab.io/)
@@ -243,7 +261,7 @@ public class EmitIlParserFactory : IParserFactory
 
                 il.Emit(OpCodes.Ldloc, instance);
                 il.Emit(OpCodes.Ldarg_0);
-                il.Emit(OpCodes.Ldc_I4, order); //question: why not variable through ldloc
+                il.Emit(OpCodes.Ldc_I4, order);
                 il.Emit(OpCodes.Ldelem_Ref);
                 il.Emit(OpCodes.Callvirt, prop.GetSetMethod());
 
@@ -285,7 +303,7 @@ public class EmitIlParserFactory : IParserFactory
 }
 ```
 
-# Sigil
+## Sigil
 
 - [A fail-fast validating helper for .NET CIL generation](https://github.com/kevin-montrose/Sigil)
 
@@ -365,6 +383,28 @@ public class SigilParserFactory : IParserFactory
         il.Return();
 
         return il.CreateDelegate();
+    }
+}
+```
+
+## cache compiled parsers
+
+```c#
+public class CachedParserFactory : IParserFactory
+{
+    private readonly IParserFactory _realParserFactory;
+    private readonly ConcurrentDictionary<string, Lazy<object>> _cache;
+
+    public CachedParserFactory(IParserFactory realParserFactory)
+    {
+        _realParserFactory = realParserFactory;
+        _cache = new ConcurrentDictionary<string, Lazy<object>>();
+    }
+
+    public Func<string[], T> GetArrayIndexParser<T>() where T : new()
+    {
+        return (Func<string[], T>)(_cache.GetOrAdd($"aip_{_realParserFactory.GetType().FullName}_{typeof(T).FullName}", 
+            new Lazy<object>(() => _realParserFactory.GetArrayIndexParser<T>(), LazyThreadSafetyMode.ExecutionAndPublication)).Value);
     }
 }
 ```
