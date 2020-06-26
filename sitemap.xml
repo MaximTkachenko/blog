@@ -1,6 +1,3 @@
----
-layout: nil
----
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset
   xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
@@ -8,22 +5,88 @@ layout: nil
   xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
   http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
   <!-- Generated with pretzel -->
-  {% for post in site.posts %}
+  
   <url>
-    <loc>http://domain{{ post.url }}</loc>
-    <lastmod>{{ post.date | date_to_xmlschema }}</lastmod>
+    <loc>http://domain/2019/11/20/myfirstpost.html</loc>
+    <lastmod>2019-11-20T00:00:00+01:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.00</priority>
   </url>
-  {% endfor %}
   
-  {% for page in site.pages %}
-	{% if page.url %}
+  
+  
+	
 	<url>
-		<loc>http://domain{{ page.url }}</loc>
+		<loc>http://domain/about.html</loc>
 		<changefreq>daily</changefreq>
 		<priority>1.00</priority>
 	</url>
-	{% endif %}
-  {% endfor %}
+	
+  
+	
+	<url>
+		<loc>http://domain/atom.xml</loc>
+		<changefreq>daily</changefreq>
+		<priority>1.00</priority>
+	</url>
+	
+  
+	
+  
+	
+  
+	
+	<url>
+		<loc>http://domain/index.html</loc>
+		<changefreq>daily</changefreq>
+		<priority>1.00</priority>
+	</url>
+	
+  
+	
+  
+	
+  
+	
+	<url>
+		<loc>http://domain/rss.xml</loc>
+		<changefreq>daily</changefreq>
+		<priority>1.00</priority>
+	</url>
+	
+  
+	
+	<url>
+		<loc>http://domain/sitemap.xml</loc>
+		<changefreq>daily</changefreq>
+		<priority>1.00</priority>
+	</url>
+	
+  
+	
+  
+	
+  
+	
+  
+	
+  
+	
+  
+	
+  
+	
+  
+	
+  
+	
+  
+	
+  
+	
+  
+	
+  
+	
+  
 </urlset>

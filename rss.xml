@@ -1,25 +1,28 @@
----
-layout: nil
----
 <?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
 <channel>
-    <title>{{ site.title }} | {{ site.author }}</title>
-    <link>{{ site.url }}</link>
-    <atom:link href="{{ site.url }}/rss.xml" rel="self" type="application/rss+xml" />
-    <description>Personal blog of {{ site.author }}</description>
+    <title> | </title>
+    <link></link>
+    <atom:link href="/rss.xml" rel="self" type="application/rss+xml" />
+    <description>Personal blog of </description>
     <language>en-us</language>
-    <pubDate>{{ site.time | date_to_rfc822 }}</pubDate>
-    <lastBuildDate>{{ site.time | date_to_rfc822 }}</lastBuildDate>
-    {% for post in site.posts %}
+    <pubDate>Wed, 20 Nov 2019 14:28:15 +0100</pubDate>
+    <lastBuildDate>Wed, 20 Nov 2019 14:28:15 +0100</lastBuildDate>
+    
     <item>
-      <title>{{ post.title | xml_escape }}</title>
-      <link>{{ site.url }}{{ post.url }}</link>
-      <pubDate>{{ post.date | date_to_rfc822 }}</pubDate>
-      <author>{{ site.contact }} ({{ site.author }})</author>
-      <guid isPermaLink="true">{{ site.url }}{{ post.url }}</guid>
-      <description>{{ post.content | xml_escape }}</description>
+      <title>My First Post</title>
+      <link>/2019/11/20/myfirstpost.html</link>
+      <pubDate>Wed, 20 Nov 2019 00:00:00 +0100</pubDate>
+      <author> ()</author>
+      <guid isPermaLink="true">/2019/11/20/myfirstpost.html</guid>
+      <description>&lt;h2&gt;Hello world...&lt;/h2&gt;
+&lt;pre&gt;&lt;code class=&quot;language-cs&quot;&gt;static void Main() 
+{
+    Console.WriteLine(&amp;quot;Hello World!&amp;quot;);
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;This is my first post on the site!&lt;/p&gt;</description>
     </item>
-    {% endfor %}
+    
   </channel> 
 </rss>

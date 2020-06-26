@@ -1,29 +1,32 @@
----
-layout: nil
----
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
-  <title>{{ site.title }} | {{ site.author }}</title>
-  <link href="{{ site.url }}/"/>
-  <link type="application/atom+xml" rel="self" href="{{ site.url }}/atom.xml"/>
-  <updated>{{ site.time | date_to_xmlschema }}</updated>
-  <id>{{ site.url }}/</id>
+  <title> | </title>
+  <link href="/"/>
+  <link type="application/atom+xml" rel="self" href="/atom.xml"/>
+  <updated>2019-11-20T14:28:15.2763688+01:00</updated>
+  <id>/</id>
   <author>
-    <name>{{ site.author }}</name>
-    <email>{{ site.contact }}</email>
+    <name></name>
+    <email></email>
   </author>
 
-  {% for post in site.posts %}
+  
   <entry>
-    <id>{{ site.url }}{{ post.url }}</id>
-    <link type="text/html" rel="alternate" href="{{ site.url }}{{ post.url }}"/>
-    <title>{{ post.title | xml_escape }}</title>
-    <updated>{{ post.date | date_to_xmlschema }}</updated>
+    <id>/2019/11/20/myfirstpost.html</id>
+    <link type="text/html" rel="alternate" href="/2019/11/20/myfirstpost.html"/>
+    <title>My First Post</title>
+    <updated>2019-11-20T00:00:00+01:00</updated>
     <author>
-      <name>{{ site.author }}</name>
-      <uri>{{ site.url }}</uri>
+      <name></name>
+      <uri></uri>
     </author>
-    <content type="html">{{ post.content | xml_escape }}</content>
+    <content type="html">&lt;h2&gt;Hello world...&lt;/h2&gt;
+&lt;pre&gt;&lt;code class=&quot;language-cs&quot;&gt;static void Main() 
+{
+    Console.WriteLine(&amp;quot;Hello World!&amp;quot;);
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;This is my first post on the site!&lt;/p&gt;</content>
   </entry>
-  {% endfor %}
+  
 </feed>
