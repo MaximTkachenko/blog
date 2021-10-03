@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.7.1 -->
+<title>Dotnet code generation overview by example | One more blog about software engineering</title>
+<meta name="generator" content="Jekyll v4.2.0" />
+<meta property="og:title" content="Dotnet code generation overview by example" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Introduction" />
+<meta property="og:description" content="Introduction" />
+<link rel="canonical" href="https://mtkachenko.me/blog/dotnet/2021/10/03/dotnet-code-generation.html" />
+<meta property="og:url" content="https://mtkachenko.me/blog/dotnet/2021/10/03/dotnet-code-generation.html" />
+<meta property="og:site_name" content="One more blog about software engineering" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2021-10-03T00:00:00+02:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Dotnet code generation overview by example" />
+<script type="application/ld+json">
+{"mainEntityOfPage":{"@type":"WebPage","@id":"https://mtkachenko.me/blog/dotnet/2021/10/03/dotnet-code-generation.html"},"description":"Introduction","@type":"BlogPosting","url":"https://mtkachenko.me/blog/dotnet/2021/10/03/dotnet-code-generation.html","headline":"Dotnet code generation overview by example","dateModified":"2021-10-03T00:00:00+02:00","datePublished":"2021-10-03T00:00:00+02:00","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/blog/assets/main.css"><link type="application/atom+xml" rel="alternate" href="https://mtkachenko.me/blog/feed.xml" title="One more blog about software engineering" /></head>
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/blog/">One more blog about software engineering</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/blog/about/">About</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">Dotnet code generation overview by example</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2021-10-03T00:00:00+02:00" itemprop="datePublished">Oct 3, 2021
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <h1 id="introduction">Introduction</h1>
+
+<p>Code generation is a very interesting topic. Instead of just writing code you can write code to write code. You can do code generation in compile time (new fancy source generators) and in runtime (expressions, emit il). Anyway an idea to create methods and classes in runtime sounds like a magic for me. Runtime code generation feature is quite heavily used in guts of DI frameworks, ORMs, different types of object mappers etc. Now that I have a sufficient understanding of the topic I realized that in the past I had some tasks which could be solved in a very efficient and elegant way using code generation. Unfortunately during those times I knew nothing about it. Search on the internet gave me results with quite high entry threshold and they didn’t give an entire understanding of the feature. Also in some articles examples are quite trivial that it’s still unclear how to apply it in practice. Here I want first to describe a particular problem which could be solved with <a href="https://en.wikipedia.org/wiki/Metaprogramming">metaprogramming</a> and then to give an overview of different code generation approaches. There will be a lot of code.</p>
+
+<h1 id="task-description">Task description</h1>
+
+<p>Let’s imagine our application receives a data from some source as a an array of strings (for simplicity only string, integer and datetime values are expected in an input array):</p>
+
+<figure class="highlight"><pre><code class="language-json" data-lang="json"><span class="p">{</span><span class="s2">"John McClane"</span><span class="p">,</span><span class="w"> </span><span class="s2">"1994-11-05T13:15:30"</span><span class="p">,</span><span class="w"> </span><span class="s2">"4455"</span><span class="p">}</span></code></pre></figure>
+
+<p>I need a generic way to parse this input into an instance of a particular class. This is an interface to create a parser delegate (i.e. it accepts an array of strings as an input and returns an instance of <code class="language-plaintext highlighter-rouge">T</code> as an output):</p>
+
+<figure class="highlight"><pre><code class="language-csharp" data-lang="csharp"><span class="k">public</span> <span class="k">interface</span> <span class="nc">IParserFactory</span>
+<span class="p">{</span>
+    <span class="n">Func</span><span class="p">&lt;</span><span class="kt">string</span><span class="p">[],</span> <span class="n">T</span><span class="p">&gt;</span> <span class="n">GetParser</span><span class="p">&lt;</span><span class="n">T</span><span class="p">&gt;()</span> <span class="k">where</span> <span class="n">T</span> <span class="p">:</span> <span class="k">new</span><span class="p">();</span>
+<span class="p">}</span></code></pre></figure>
+
+<p>To identify classes used as a parser’s output I use <code class="language-plaintext highlighter-rouge">ParserOutputAttribute</code>. To understand which property each of the array elements corresponds to I use <code class="language-plaintext highlighter-rouge">ArrayIndexAttribute</code>:</p>
+
+<figure class="highlight"><pre><code class="language-csharp" data-lang="csharp"><span class="p">[</span><span class="n">ParserOutput</span><span class="p">]</span>
+<span class="k">public</span> <span class="k">class</span> <span class="nc">Data</span>
+<span class="p">{</span>
+    <span class="p">[</span><span class="nf">ArrayIndex</span><span class="p">(</span><span class="m">0</span><span class="p">)]</span> <span class="k">public</span> <span class="kt">string</span> <span class="n">Name</span> <span class="p">{</span> <span class="k">get</span><span class="p">;</span> <span class="k">set</span><span class="p">;</span> <span class="p">}</span> <span class="c1">// will be "John McClane"</span>
+    <span class="p">[</span><span class="nf">ArrayIndex</span><span class="p">(</span><span class="m">2</span><span class="p">)]</span> <span class="k">public</span> <span class="kt">int</span> <span class="n">Number</span> <span class="p">{</span> <span class="k">get</span><span class="p">;</span> <span class="k">set</span><span class="p">;</span> <span class="p">}</span> <span class="c1">// will be 4455</span>
+    <span class="p">[</span><span class="nf">ArrayIndex</span><span class="p">(</span><span class="m">1</span><span class="p">)]</span> <span class="k">public</span> <span class="n">DateTime</span> <span class="n">Birthday</span> <span class="p">{</span> <span class="k">get</span><span class="p">;</span> <span class="k">set</span><span class="p">;</span> <span class="p">}</span> <span class="c1">// will be 1994-11-05T13:15:30</span>
+<span class="p">}</span></code></pre></figure>
+
+<p>If an element of an array can’t be parsed to the target type it will be ignored.
+So as a general idea I don’t want to limit implementation by <code class="language-plaintext highlighter-rouge">Data</code> class only. I want to produce a parser delegate for any type with the proper attributes.</p>
+
+<h1 id="plain-c">Plain C#</h1>
+
+<p>First of all I want to write a plain C# code without code generation or reflection at all for a known type:</p>
+
+<figure class="highlight"><pre><code class="language-csharp" data-lang="csharp"><span class="kt">var</span> <span class="n">data</span> <span class="p">=</span> <span class="k">new</span> <span class="nf">Data</span><span class="p">();</span>
+<span class="k">if</span> <span class="p">(</span><span class="m">0</span> <span class="p">&lt;</span> <span class="n">inputArray</span><span class="p">.</span><span class="n">Length</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">data</span><span class="p">.</span><span class="n">Name</span> <span class="p">=</span> <span class="n">inputArray</span><span class="p">[</span><span class="m">0</span><span class="p">];</span>
+<span class="p">}</span>
+<span class="k">if</span> <span class="p">(</span><span class="m">1</span> <span class="p">&lt;</span> <span class="n">inputArray</span><span class="p">.</span><span class="n">Length</span> <span class="p">&amp;&amp;</span> <span class="n">DateTime</span><span class="p">.</span><span class="nf">TryParse</span><span class="p">(</span><span class="n">inputArray</span><span class="p">[</span><span class="m">1</span><span class="p">],</span> <span class="k">out</span> <span class="kt">var</span> <span class="n">bd</span><span class="p">))</span>
+<span class="p">{</span>
+    <span class="n">data</span><span class="p">.</span><span class="n">Birthday</span> <span class="p">=</span> <span class="n">bd</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="k">if</span> <span class="p">(</span><span class="m">2</span> <span class="p">&lt;</span> <span class="n">inputArray</span><span class="p">.</span><span class="n">Length</span> <span class="p">&amp;&amp;</span> <span class="kt">int</span><span class="p">.</span><span class="nf">TryParse</span><span class="p">(</span><span class="n">inputArray</span><span class="p">[</span><span class="m">2</span><span class="p">],</span> <span class="k">out</span> <span class="kt">var</span> <span class="n">n</span><span class="p">))</span>
+<span class="p">{</span>
+    <span class="n">data</span><span class="p">.</span><span class="n">Number</span> <span class="p">=</span> <span class="n">n</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="k">return</span> <span class="n">data</span><span class="p">;</span></code></pre></figure>
+
+<p>Quite simple, right? But now I want to generate the same code for an arbitrary type in runtime or compile time. Let’s go.</p>
+
+<h1 id="reflection">Reflection</h1>
+
+<p>In the first approach with <a href="https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/concepts/reflection">reflection</a> I don’t actually generate a parser delegate. Instead I create an instance of the target type and set its properties using reflection API.</p>
+
+<figure class="highlight"><pre><code class="language-csharp" data-lang="csharp"><span class="k">public</span> <span class="k">class</span> <span class="nc">ReflectionParserFactory</span> <span class="p">:</span> <span class="n">IParserFactory</span>
+<span class="p">{</span>
+	<span class="k">public</span> <span class="n">Func</span><span class="p">&lt;</span><span class="kt">string</span><span class="p">[],</span> <span class="n">T</span><span class="p">&gt;</span> <span class="n">GetParser</span><span class="p">&lt;</span><span class="n">T</span><span class="p">&gt;()</span> <span class="k">where</span> <span class="n">T</span> <span class="p">:</span> <span class="k">new</span><span class="p">()</span>
+	<span class="p">{</span>
+		<span class="k">return</span> <span class="n">ArrayIndexParse</span><span class="p">&lt;</span><span class="n">T</span><span class="p">&gt;;</span>
+	<span class="p">}</span>
+
+	<span class="k">private</span> <span class="k">static</span> <span class="n">T</span> <span class="n">ArrayIndexParse</span><span class="p">&lt;</span><span class="n">T</span><span class="p">&gt;(</span><span class="kt">string</span><span class="p">[]</span> <span class="n">data</span><span class="p">)</span> <span class="k">where</span> <span class="n">T</span> <span class="p">:</span> <span class="k">new</span><span class="p">()</span>
+	<span class="p">{</span>
+        <span class="c1">// create a new instance of target type</span>
+		<span class="kt">var</span> <span class="n">instance</span> <span class="p">=</span> <span class="k">new</span> <span class="nf">T</span><span class="p">();</span>
+		<span class="kt">var</span> <span class="n">props</span> <span class="p">=</span> <span class="k">typeof</span><span class="p">(</span><span class="n">T</span><span class="p">).</span><span class="nf">GetProperties</span><span class="p">(</span><span class="n">BindingFlags</span><span class="p">.</span><span class="n">Instance</span> <span class="p">|</span> <span class="n">BindingFlags</span><span class="p">.</span><span class="n">Public</span><span class="p">);</span>
+
+        <span class="c1">//go through all public and non-static properties</span>
+        <span class="c1">//read and parse corresponding element in array and if success - set property value</span>
+		<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="p">=</span> <span class="m">0</span><span class="p">;</span> <span class="n">i</span> <span class="p">&lt;</span> <span class="n">props</span><span class="p">.</span><span class="n">Length</span><span class="p">;</span> <span class="n">i</span><span class="p">++)</span>
+		<span class="p">{</span>
+			<span class="kt">var</span> <span class="n">attrs</span> <span class="p">=</span> <span class="n">props</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="nf">GetCustomAttributes</span><span class="p">(</span><span class="k">typeof</span><span class="p">(</span><span class="n">ArrayIndexAttribute</span><span class="p">)).</span><span class="nf">ToArray</span><span class="p">();</span>
+			<span class="k">if</span> <span class="p">(</span><span class="n">attrs</span><span class="p">.</span><span class="n">Length</span> <span class="p">==</span> <span class="m">0</span><span class="p">)</span> <span class="k">continue</span><span class="p">;</span>
+
+			<span class="kt">int</span> <span class="n">order</span> <span class="p">=</span> <span class="p">((</span><span class="n">ArrayIndexAttribute</span><span class="p">)</span><span class="n">attrs</span><span class="p">[</span><span class="m">0</span><span class="p">]).</span><span class="n">Order</span><span class="p">;</span>
+			<span class="k">if</span> <span class="p">(</span><span class="n">order</span> <span class="p">&lt;</span> <span class="m">0</span> <span class="p">||</span> <span class="n">order</span> <span class="p">&gt;=</span> <span class="n">data</span><span class="p">.</span><span class="n">Length</span><span class="p">)</span> <span class="k">continue</span><span class="p">;</span>
+
+			<span class="k">if</span> <span class="p">(</span><span class="n">props</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">PropertyType</span> <span class="p">==</span> <span class="k">typeof</span><span class="p">(</span><span class="kt">string</span><span class="p">))</span>
+			<span class="p">{</span>
+				<span class="n">props</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="nf">SetValue</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="n">order</span><span class="p">]);</span>
+				<span class="k">continue</span><span class="p">;</span>
+			<span class="p">}</span>
+
+			<span class="k">if</span> <span class="p">(</span><span class="n">props</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">PropertyType</span> <span class="p">==</span> <span class="k">typeof</span><span class="p">(</span><span class="kt">int</span><span class="p">))</span>
+			<span class="p">{</span>
+				<span class="k">if</span> <span class="p">(</span><span class="kt">int</span><span class="p">.</span><span class="nf">TryParse</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">order</span><span class="p">],</span> <span class="k">out</span> <span class="kt">var</span> <span class="n">intResult</span><span class="p">))</span>
+				<span class="p">{</span>
+					<span class="n">props</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="nf">SetValue</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="n">intResult</span><span class="p">);</span>
+				<span class="p">}</span>
+
+				<span class="k">continue</span><span class="p">;</span>
+			<span class="p">}</span>
+
+			<span class="k">if</span> <span class="p">(</span><span class="n">props</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">PropertyType</span> <span class="p">==</span> <span class="k">typeof</span><span class="p">(</span><span class="n">DateTime</span><span class="p">))</span>
+			<span class="p">{</span>
+				<span class="k">if</span> <span class="p">(</span><span class="n">DateTime</span><span class="p">.</span><span class="nf">TryParse</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">order</span><span class="p">],</span> <span class="k">out</span> <span class="kt">var</span> <span class="n">dtResult</span><span class="p">))</span>
+				<span class="p">{</span>
+					<span class="n">props</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="nf">SetValue</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="n">dtResult</span><span class="p">);</span>
+				<span class="p">}</span>
+			<span class="p">}</span>
+		<span class="p">}</span>
+		<span class="k">return</span> <span class="n">instance</span><span class="p">;</span>
+	<span class="p">}</span>
+<span class="p">}</span></code></pre></figure>
+
+<p>It works and it’s quite readable. But it’s <a href="https://mattwarren.org/2016/12/14/Why-is-Reflection-slow/">slow</a> (check <a href="#benchmarks">benchmarks</a> section too). If you want to call this code very often it could be an issue. I want to implement something more sophisticated using <strong>real</strong> code generation.</p>
+
+<h1 id="code-generation">Code generation</h1>
+
+<h2 id="expression-trees">Expression trees</h2>
+
+<p>From the <a href="https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/concepts/expression-trees/">official documentation</a>:</p>
+<blockquote>
+  <p>Expression trees represent code in a tree-like data structure, where each node is an expression, for example, a method call or a binary operation such as x &lt; y. You can compile and run code represented by expression trees.</p>
+</blockquote>
+
+<ul>
+  <li><a href="https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/concepts/expression-trees/how-to-execute-expression-trees">How to execute expression trees</a></li>
+  <li><a href="https://docs.microsoft.com/en-us/dotnet/api/system.linq.expressions?view=netcore-3.1#classes">Expression classes</a></li>
+</ul>
+
+<p>Expression trees give primitive building blocks like <code class="language-plaintext highlighter-rouge">Expression.Call</code> to call a method, <code class="language-plaintext highlighter-rouge">Expression.Loop</code> to add some repeating logic etc. Then using these blocks we build a parser delegate as a <code class="language-plaintext highlighter-rouge">tree</code> of instructions and finally compile it into the delegate at runtime.</p>
+
+<figure class="highlight"><pre><code class="language-csharp" data-lang="csharp"><span class="k">public</span> <span class="k">class</span> <span class="nc">ExpressionTreeParserFactory</span> <span class="p">:</span> <span class="n">IParserFactory</span>
+<span class="p">{</span>
+	<span class="k">public</span> <span class="n">Func</span><span class="p">&lt;</span><span class="kt">string</span><span class="p">[],</span> <span class="n">T</span><span class="p">&gt;</span> <span class="n">GetParser</span><span class="p">&lt;</span><span class="n">T</span><span class="p">&gt;()</span> <span class="k">where</span> <span class="n">T</span> <span class="p">:</span> <span class="k">new</span><span class="p">()</span>
+	<span class="p">{</span>
+		<span class="kt">var</span> <span class="n">props</span> <span class="p">=</span> <span class="k">typeof</span><span class="p">(</span><span class="n">T</span><span class="p">).</span><span class="nf">GetProperties</span><span class="p">(</span><span class="n">BindingFlags</span><span class="p">.</span><span class="n">Instance</span> <span class="p">|</span> <span class="n">BindingFlags</span><span class="p">.</span><span class="n">Public</span><span class="p">);</span>
+
+        <span class="c1">//declare an input parameter of the delegate</span>
+		<span class="n">ParameterExpression</span> <span class="n">inputArray</span> <span class="p">=</span> <span class="n">Expression</span><span class="p">.</span><span class="nf">Parameter</span><span class="p">(</span><span class="k">typeof</span><span class="p">(</span><span class="kt">string</span><span class="p">[]),</span> <span class="s">"inputArray"</span><span class="p">);</span>
+        <span class="c1">//declare an output parameter of the delegate</span>
+		<span class="n">ParameterExpression</span> <span class="n">instance</span> <span class="p">=</span> <span class="n">Expression</span><span class="p">.</span><span class="nf">Variable</span><span class="p">(</span><span class="k">typeof</span><span class="p">(</span><span class="n">T</span><span class="p">),</span> <span class="s">"instance"</span><span class="p">);</span>
+
+        <span class="c1">//create a new instance of target type</span>
+		<span class="kt">var</span> <span class="n">block</span> <span class="p">=</span> <span class="k">new</span> <span class="n">List</span><span class="p">&lt;</span><span class="n">Expression</span><span class="p">&gt;</span>
+		<span class="p">{</span>
+			<span class="n">Expression</span><span class="p">.</span><span class="nf">Assign</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="n">Expression</span><span class="p">.</span><span class="nf">New</span><span class="p">(</span><span class="k">typeof</span><span class="p">(</span><span class="n">T</span><span class="p">).</span><span class="nf">GetConstructors</span><span class="p">()[</span><span class="m">0</span><span class="p">]))</span>
+		<span class="p">};</span>
+		<span class="kt">var</span> <span class="n">variables</span> <span class="p">=</span> <span class="k">new</span> <span class="n">List</span><span class="p">&lt;</span><span class="n">ParameterExpression</span><span class="p">&gt;</span> <span class="p">{</span><span class="n">instance</span><span class="p">};</span>
+
+        <span class="c1">//go through all public and non-static properties</span>
+		<span class="k">foreach</span> <span class="p">(</span><span class="kt">var</span> <span class="n">prop</span> <span class="k">in</span> <span class="n">props</span><span class="p">)</span>
+		<span class="p">{</span>
+			<span class="kt">var</span> <span class="n">attrs</span> <span class="p">=</span> <span class="n">prop</span><span class="p">.</span><span class="nf">GetCustomAttributes</span><span class="p">(</span><span class="k">typeof</span><span class="p">(</span><span class="n">ArrayIndexAttribute</span><span class="p">)).</span><span class="nf">ToArray</span><span class="p">();</span>
+			<span class="k">if</span> <span class="p">(</span><span class="n">attrs</span><span class="p">.</span><span class="n">Length</span> <span class="p">==</span> <span class="m">0</span><span class="p">)</span> <span class="k">continue</span><span class="p">;</span>
+
+			<span class="kt">int</span> <span class="n">order</span> <span class="p">=</span> <span class="p">((</span><span class="n">ArrayIndexAttribute</span><span class="p">)</span><span class="n">attrs</span><span class="p">[</span><span class="m">0</span><span class="p">]).</span><span class="n">Order</span><span class="p">;</span>
+			<span class="k">if</span> <span class="p">(</span><span class="n">order</span> <span class="p">&lt;</span> <span class="m">0</span><span class="p">)</span> <span class="k">continue</span><span class="p">;</span>
+
+            <span class="c1">//validate an index from ArrayIndexAttribute</span>
+			<span class="kt">var</span> <span class="n">orderConst</span> <span class="p">=</span> <span class="n">Expression</span><span class="p">.</span><span class="nf">Constant</span><span class="p">(</span><span class="n">order</span><span class="p">);</span>
+			<span class="kt">var</span> <span class="n">orderCheck</span> <span class="p">=</span> <span class="n">Expression</span><span class="p">.</span><span class="nf">LessThan</span><span class="p">(</span><span class="n">orderConst</span><span class="p">,</span> <span class="n">Expression</span><span class="p">.</span><span class="nf">ArrayLength</span><span class="p">(</span><span class="n">inputArray</span><span class="p">));</span>
+
+			<span class="k">if</span> <span class="p">(</span><span class="n">prop</span><span class="p">.</span><span class="n">PropertyType</span> <span class="p">==</span> <span class="k">typeof</span><span class="p">(</span><span class="kt">string</span><span class="p">))</span>
+			<span class="p">{</span>
+                <span class="c1">//set string property</span>
+				<span class="kt">var</span> <span class="n">stringPropertySet</span> <span class="p">=</span> <span class="n">Expression</span><span class="p">.</span><span class="nf">Assign</span><span class="p">(</span>
+					<span class="n">Expression</span><span class="p">.</span><span class="nf">Property</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="n">prop</span><span class="p">),</span>
+					<span class="n">Expression</span><span class="p">.</span><span class="nf">ArrayIndex</span><span class="p">(</span><span class="n">inputArray</span><span class="p">,</span> <span class="n">orderConst</span><span class="p">));</span>
+
+				<span class="n">block</span><span class="p">.</span><span class="nf">Add</span><span class="p">(</span><span class="n">Expression</span><span class="p">.</span><span class="nf">IfThen</span><span class="p">(</span><span class="n">orderCheck</span><span class="p">,</span> <span class="n">stringPropertySet</span><span class="p">));</span>
+				<span class="k">continue</span><span class="p">;</span>
+			<span class="p">}</span>
+
+            <span class="c1">//get parser method from the list of available parsers (currently we parse only Int and DateTime)</span>
+			<span class="k">if</span> <span class="p">(!</span><span class="n">TypeParsers</span><span class="p">.</span><span class="n">Parsers</span><span class="p">.</span><span class="nf">TryGetValue</span><span class="p">(</span><span class="n">prop</span><span class="p">.</span><span class="n">PropertyType</span><span class="p">,</span> <span class="k">out</span> <span class="kt">var</span> <span class="n">parser</span><span class="p">))</span>
+			<span class="p">{</span>
+				<span class="k">continue</span><span class="p">;</span>
+			<span class="p">}</span>
+
+			<span class="kt">var</span> <span class="n">parseResult</span> <span class="p">=</span> <span class="n">Expression</span><span class="p">.</span><span class="nf">Variable</span><span class="p">(</span><span class="n">prop</span><span class="p">.</span><span class="n">PropertyType</span><span class="p">,</span> <span class="s">"parseResult"</span><span class="p">);</span>
+			<span class="kt">var</span> <span class="n">parserCall</span> <span class="p">=</span> <span class="n">Expression</span><span class="p">.</span><span class="nf">Call</span><span class="p">(</span><span class="n">parser</span><span class="p">,</span> <span class="n">Expression</span><span class="p">.</span><span class="nf">ArrayIndex</span><span class="p">(</span><span class="n">inputArray</span><span class="p">,</span> <span class="n">orderConst</span><span class="p">),</span> <span class="n">parseResult</span><span class="p">);</span>
+			<span class="kt">var</span> <span class="n">propertySet</span> <span class="p">=</span> <span class="n">Expression</span><span class="p">.</span><span class="nf">Assign</span><span class="p">(</span>
+				<span class="n">Expression</span><span class="p">.</span><span class="nf">Property</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="n">prop</span><span class="p">),</span>
+				<span class="n">parseResult</span><span class="p">);</span>
+
+            <span class="c1">//set property if an element of array is successfully parsed</span>
+			<span class="kt">var</span> <span class="n">ifSet</span> <span class="p">=</span> <span class="n">Expression</span><span class="p">.</span><span class="nf">IfThen</span><span class="p">(</span><span class="n">parserCall</span><span class="p">,</span> <span class="n">propertySet</span><span class="p">);</span>
+
+			<span class="n">block</span><span class="p">.</span><span class="nf">Add</span><span class="p">(</span><span class="n">Expression</span><span class="p">.</span><span class="nf">IfThen</span><span class="p">(</span><span class="n">orderCheck</span><span class="p">,</span> <span class="n">ifSet</span><span class="p">));</span>
+			<span class="n">variables</span><span class="p">.</span><span class="nf">Add</span><span class="p">(</span><span class="n">parseResult</span><span class="p">);</span>
+		<span class="p">}</span>
+
+		<span class="n">block</span><span class="p">.</span><span class="nf">Add</span><span class="p">(</span><span class="n">instance</span><span class="p">);</span>
+
+        <span class="c1">//compile lambda expression into delegate</span>
+		<span class="k">return</span> <span class="n">Expression</span><span class="p">.</span><span class="n">Lambda</span><span class="p">&lt;</span><span class="n">Func</span><span class="p">&lt;</span><span class="kt">string</span><span class="p">[],</span> <span class="n">T</span><span class="p">&gt;&gt;(</span>
+			<span class="n">Expression</span><span class="p">.</span><span class="nf">Block</span><span class="p">(</span><span class="n">variables</span><span class="p">.</span><span class="nf">ToArray</span><span class="p">(),</span> <span class="n">Expression</span><span class="p">.</span><span class="nf">Block</span><span class="p">(</span><span class="n">block</span><span class="p">)),</span> 
+			<span class="n">inputArray</span><span class="p">).</span><span class="nf">Compile</span><span class="p">();</span>
+	<span class="p">}</span>
+<span class="p">}</span></code></pre></figure>
+
+<h2 id="emit-il">Emit il</h2>
+
+<p>Dotnet compiler transforms your C# code into intermediate language (<a href="https://en.wikipedia.org/wiki/Common_Intermediate_Language">CIL or just IL</a>) and then dotnet runtime translates MSIL into machine instructions. For instance, using <a href="https://sharplab.io/">sharplab.io</a> you can easily check how generated IL looks like:
+<img src="/blog/assets/sharplab_msil.png" alt="C# and corresponding IL from https://sharplab.io/" /></p>
+<ul>
+  <li><a href="https://docs.microsoft.com/en-us/dotnet/api/system.reflection.emit?view=net-5.0">System.Reflection.Emit</a></li>
+  <li><a href="https://docs.microsoft.com/en-us/dotnet/framework/reflection-and-codedom/how-to-define-and-execute-dynamic-methods">How to: Define and Execute Dynamic Methods</a></li>
+  <li><a href="https://docs.microsoft.com/en-us/dotnet/api/system.reflection.emit.opcodes?view=netcore-3.1#fields">OpCodes list</a></li>
+  <li><a href="https://www.jetbrains.com/help/resharper/Viewing_Intermediate_Language.html">ReSharper IL viewer</a></li>
+</ul>
+
+<p>Here we are going to write (“emit”) IL instructions directly and then compile it into the delegate in runtime.</p>
+
+<figure class="highlight"><pre><code class="language-csharp" data-lang="csharp"><span class="k">public</span> <span class="k">class</span> <span class="nc">EmitIlParserFactory</span> <span class="p">:</span> <span class="n">IParserFactory</span>
+<span class="p">{</span>
+	<span class="k">public</span> <span class="n">Func</span><span class="p">&lt;</span><span class="kt">string</span><span class="p">[],</span> <span class="n">T</span><span class="p">&gt;</span> <span class="n">GetParser</span><span class="p">&lt;</span><span class="n">T</span><span class="p">&gt;()</span> <span class="k">where</span> <span class="n">T</span> <span class="p">:</span> <span class="k">new</span><span class="p">()</span>
+	<span class="p">{</span>
+		<span class="kt">var</span> <span class="n">props</span> <span class="p">=</span> <span class="k">typeof</span><span class="p">(</span><span class="n">T</span><span class="p">).</span><span class="nf">GetProperties</span><span class="p">(</span><span class="n">BindingFlags</span><span class="p">.</span><span class="n">Instance</span> <span class="p">|</span> <span class="n">BindingFlags</span><span class="p">.</span><span class="n">Public</span><span class="p">);</span>
+
+		<span class="kt">var</span> <span class="n">dm</span> <span class="p">=</span> <span class="k">new</span> <span class="nf">DynamicMethod</span><span class="p">(</span><span class="s">$"from_</span><span class="p">{</span><span class="k">typeof</span><span class="p">(</span><span class="kt">string</span><span class="p">[]).</span><span class="n">FullName</span><span class="p">}</span><span class="s">_to_</span><span class="p">{</span><span class="k">typeof</span><span class="p">(</span><span class="n">T</span><span class="p">).</span><span class="n">FullName</span><span class="p">}</span><span class="s">"</span><span class="p">,</span> 
+			<span class="k">typeof</span><span class="p">(</span><span class="n">T</span><span class="p">),</span> <span class="k">new</span> <span class="p">[]</span> <span class="p">{</span> <span class="k">typeof</span><span class="p">(</span><span class="kt">string</span><span class="p">[])</span> <span class="p">},</span> <span class="k">typeof</span><span class="p">(</span><span class="n">EmitIlParserFactory</span><span class="p">).</span><span class="n">Module</span><span class="p">);</span>
+		<span class="kt">var</span> <span class="n">il</span> <span class="p">=</span> <span class="n">dm</span><span class="p">.</span><span class="nf">GetILGenerator</span><span class="p">();</span>
+
+        <span class="c1">//create a new instance of target type</span>
+		<span class="kt">var</span> <span class="n">instance</span> <span class="p">=</span> <span class="n">il</span><span class="p">.</span><span class="nf">DeclareLocal</span><span class="p">(</span><span class="k">typeof</span><span class="p">(</span><span class="n">T</span><span class="p">));</span>
+		<span class="n">il</span><span class="p">.</span><span class="nf">Emit</span><span class="p">(</span><span class="n">OpCodes</span><span class="p">.</span><span class="n">Newobj</span><span class="p">,</span> <span class="k">typeof</span><span class="p">(</span><span class="n">T</span><span class="p">).</span><span class="nf">GetConstructors</span><span class="p">()[</span><span class="m">0</span><span class="p">]);</span>
+		<span class="n">il</span><span class="p">.</span><span class="nf">Emit</span><span class="p">(</span><span class="n">OpCodes</span><span class="p">.</span><span class="n">Stloc</span><span class="p">,</span> <span class="n">instance</span><span class="p">);</span>
+
+        <span class="c1">//go through all public and non-static properties</span>
+		<span class="k">foreach</span> <span class="p">(</span><span class="kt">var</span> <span class="n">prop</span> <span class="k">in</span> <span class="n">props</span><span class="p">)</span>
+		<span class="p">{</span>
+			<span class="kt">var</span> <span class="n">attrs</span> <span class="p">=</span> <span class="n">prop</span><span class="p">.</span><span class="nf">GetCustomAttributes</span><span class="p">(</span><span class="k">typeof</span><span class="p">(</span><span class="n">ArrayIndexAttribute</span><span class="p">)).</span><span class="nf">ToArray</span><span class="p">();</span>
+			<span class="k">if</span> <span class="p">(</span><span class="n">attrs</span><span class="p">.</span><span class="n">Length</span> <span class="p">==</span> <span class="m">0</span><span class="p">)</span> <span class="k">continue</span><span class="p">;</span>
+
+			<span class="kt">int</span> <span class="n">order</span> <span class="p">=</span> <span class="p">((</span><span class="n">ArrayIndexAttribute</span><span class="p">)</span><span class="n">attrs</span><span class="p">[</span><span class="m">0</span><span class="p">]).</span><span class="n">Order</span><span class="p">;</span>
+			<span class="k">if</span> <span class="p">(</span><span class="n">order</span> <span class="p">&lt;</span> <span class="m">0</span><span class="p">)</span> <span class="k">continue</span><span class="p">;</span>
+
+			<span class="kt">var</span> <span class="n">label</span> <span class="p">=</span> <span class="n">il</span><span class="p">.</span><span class="nf">DefineLabel</span><span class="p">();</span>
+
+			<span class="k">if</span> <span class="p">(</span><span class="n">prop</span><span class="p">.</span><span class="n">PropertyType</span> <span class="p">==</span> <span class="k">typeof</span><span class="p">(</span><span class="kt">string</span><span class="p">))</span>
+			<span class="p">{</span>
+                <span class="c1">//check whether order from ArrayIndexAttribute is a valid index of the input array</span>
+				<span class="n">il</span><span class="p">.</span><span class="nf">Emit</span><span class="p">(</span><span class="n">OpCodes</span><span class="p">.</span><span class="n">Ldc_I4</span><span class="p">,</span> <span class="n">order</span><span class="p">);</span>
+				<span class="n">il</span><span class="p">.</span><span class="nf">Emit</span><span class="p">(</span><span class="n">OpCodes</span><span class="p">.</span><span class="n">Ldarg_0</span><span class="p">);</span>
+				<span class="n">il</span><span class="p">.</span><span class="nf">Emit</span><span class="p">(</span><span class="n">OpCodes</span><span class="p">.</span><span class="n">Ldlen</span><span class="p">);</span>
+				<span class="n">il</span><span class="p">.</span><span class="nf">Emit</span><span class="p">(</span><span class="n">OpCodes</span><span class="p">.</span><span class="n">Bge_S</span><span class="p">,</span> <span class="n">label</span><span class="p">);</span>
+
+                <span class="c1">//set string property</span>
+				<span class="n">il</span><span class="p">.</span><span class="nf">Emit</span><span class="p">(</span><span class="n">OpCodes</span><span class="p">.</span><span class="n">Ldloc</span><span class="p">,</span> <span class="n">instance</span><span class="p">);</span>
+				<span class="n">il</span><span class="p">.</span><span class="nf">Emit</span><span class="p">(</span><span class="n">OpCodes</span><span class="p">.</span><span class="n">Ldarg_0</span><span class="p">);</span>
+				<span class="n">il</span><span class="p">.</span><span class="nf">Emit</span><span class="p">(</span><span class="n">OpCodes</span><span class="p">.</span><span class="n">Ldc_I4</span><span class="p">,</span> <span class="n">order</span><span class="p">);</span>
+				<span class="n">il</span><span class="p">.</span><span class="nf">Emit</span><span class="p">(</span><span class="n">OpCodes</span><span class="p">.</span><span class="n">Ldelem_Ref</span><span class="p">);</span>
+				<span class="n">il</span><span class="p">.</span><span class="nf">Emit</span><span class="p">(</span><span class="n">OpCodes</span><span class="p">.</span><span class="n">Callvirt</span><span class="p">,</span> <span class="n">prop</span><span class="p">.</span><span class="nf">GetSetMethod</span><span class="p">());</span>
+
+				<span class="n">il</span><span class="p">.</span><span class="nf">MarkLabel</span><span class="p">(</span><span class="n">label</span><span class="p">);</span>
+				<span class="k">continue</span><span class="p">;</span>
+			<span class="p">}</span>
+
+            <span class="c1">//get parser method from the list of available parsers (currently we parse only Int and DateTime)</span>
+			<span class="k">if</span> <span class="p">(!</span><span class="n">TypeParsers</span><span class="p">.</span><span class="n">Parsers</span><span class="p">.</span><span class="nf">TryGetValue</span><span class="p">(</span><span class="n">prop</span><span class="p">.</span><span class="n">PropertyType</span><span class="p">,</span> <span class="k">out</span> <span class="kt">var</span> <span class="n">parser</span><span class="p">))</span>
+			<span class="p">{</span>
+				<span class="k">continue</span><span class="p">;</span>
+			<span class="p">}</span>
+
+            <span class="c1">//check whether order from ArrayIndexAttribute is a valid index of the input array</span>
+			<span class="n">il</span><span class="p">.</span><span class="nf">Emit</span><span class="p">(</span><span class="n">OpCodes</span><span class="p">.</span><span class="n">Ldc_I4</span><span class="p">,</span> <span class="n">order</span><span class="p">);</span>
+			<span class="n">il</span><span class="p">.</span><span class="nf">Emit</span><span class="p">(</span><span class="n">OpCodes</span><span class="p">.</span><span class="n">Ldarg_0</span><span class="p">);</span>
+			<span class="n">il</span><span class="p">.</span><span class="nf">Emit</span><span class="p">(</span><span class="n">OpCodes</span><span class="p">.</span><span class="n">Ldlen</span><span class="p">);</span>
+			<span class="n">il</span><span class="p">.</span><span class="nf">Emit</span><span class="p">(</span><span class="n">OpCodes</span><span class="p">.</span><span class="n">Bge_S</span><span class="p">,</span> <span class="n">label</span><span class="p">);</span>
+
+			<span class="kt">var</span> <span class="n">parseResult</span> <span class="p">=</span> <span class="n">il</span><span class="p">.</span><span class="nf">DeclareLocal</span><span class="p">(</span><span class="n">prop</span><span class="p">.</span><span class="n">PropertyType</span><span class="p">);</span>
+
+			<span class="n">il</span><span class="p">.</span><span class="nf">Emit</span><span class="p">(</span><span class="n">OpCodes</span><span class="p">.</span><span class="n">Ldarg_0</span><span class="p">);</span>
+			<span class="n">il</span><span class="p">.</span><span class="nf">Emit</span><span class="p">(</span><span class="n">OpCodes</span><span class="p">.</span><span class="n">Ldc_I4</span><span class="p">,</span> <span class="n">order</span><span class="p">);</span>
+			<span class="n">il</span><span class="p">.</span><span class="nf">Emit</span><span class="p">(</span><span class="n">OpCodes</span><span class="p">.</span><span class="n">Ldelem_Ref</span><span class="p">);</span>
+			<span class="n">il</span><span class="p">.</span><span class="nf">Emit</span><span class="p">(</span><span class="n">OpCodes</span><span class="p">.</span><span class="n">Ldloca</span><span class="p">,</span> <span class="n">parseResult</span><span class="p">);</span>
+			<span class="n">il</span><span class="p">.</span><span class="nf">EmitCall</span><span class="p">(</span><span class="n">OpCodes</span><span class="p">.</span><span class="n">Call</span><span class="p">,</span> <span class="n">parser</span><span class="p">,</span> <span class="k">null</span><span class="p">);</span>
+			<span class="n">il</span><span class="p">.</span><span class="nf">Emit</span><span class="p">(</span><span class="n">OpCodes</span><span class="p">.</span><span class="n">Brfalse_S</span><span class="p">,</span> <span class="n">label</span><span class="p">);</span>
+            
+            <span class="c1">//set property if an element of array is successfully parsed</span>
+			<span class="n">il</span><span class="p">.</span><span class="nf">Emit</span><span class="p">(</span><span class="n">OpCodes</span><span class="p">.</span><span class="n">Ldloc</span><span class="p">,</span> <span class="n">instance</span><span class="p">);</span>
+			<span class="n">il</span><span class="p">.</span><span class="nf">Emit</span><span class="p">(</span><span class="n">OpCodes</span><span class="p">.</span><span class="n">Ldloc</span><span class="p">,</span> <span class="n">parseResult</span><span class="p">);</span>
+			<span class="n">il</span><span class="p">.</span><span class="nf">Emit</span><span class="p">(</span><span class="n">OpCodes</span><span class="p">.</span><span class="n">Callvirt</span><span class="p">,</span> <span class="n">prop</span><span class="p">.</span><span class="nf">GetSetMethod</span><span class="p">());</span>
+
+			<span class="n">il</span><span class="p">.</span><span class="nf">MarkLabel</span><span class="p">(</span><span class="n">label</span><span class="p">);</span>
+		<span class="p">}</span>
+
+		<span class="n">il</span><span class="p">.</span><span class="nf">Emit</span><span class="p">(</span><span class="n">OpCodes</span><span class="p">.</span><span class="n">Ldloc</span><span class="p">,</span> <span class="n">instance</span><span class="p">);</span>
+		<span class="n">il</span><span class="p">.</span><span class="nf">Emit</span><span class="p">(</span><span class="n">OpCodes</span><span class="p">.</span><span class="n">Ret</span><span class="p">);</span>
+
+        <span class="c1">//create delegate from il instructions</span>
+		<span class="k">return</span> <span class="p">(</span><span class="n">Func</span><span class="p">&lt;</span><span class="kt">string</span><span class="p">[],</span> <span class="n">T</span><span class="p">&gt;)</span><span class="n">dm</span><span class="p">.</span><span class="nf">CreateDelegate</span><span class="p">(</span><span class="k">typeof</span><span class="p">(</span><span class="n">Func</span><span class="p">&lt;</span><span class="kt">string</span><span class="p">[],</span> <span class="n">T</span><span class="p">&gt;));</span>
+	<span class="p">}</span>
+<span class="p">}</span></code></pre></figure>
+
+<h2 id="sigil">Sigil</h2>
+
+<ul>
+  <li><a href="https://github.com/kevin-montrose/Sigil">A fail-fast validating helper for .NET CIL generation</a></li>
+</ul>
+
+<p>This approach is quite similar to the previous one, but now we use sigil which gives syntax sugar and more understandable errors.</p>
+
+<figure class="highlight"><pre><code class="language-csharp" data-lang="csharp"><span class="k">public</span> <span class="k">class</span> <span class="nc">SigilParserFactory</span> <span class="p">:</span> <span class="n">IParserFactory</span>
+<span class="p">{</span>
+	<span class="k">public</span> <span class="n">Func</span><span class="p">&lt;</span><span class="kt">string</span><span class="p">[],</span> <span class="n">T</span><span class="p">&gt;</span> <span class="n">GetParser</span><span class="p">&lt;</span><span class="n">T</span><span class="p">&gt;()</span> <span class="k">where</span> <span class="n">T</span> <span class="p">:</span> <span class="k">new</span><span class="p">()</span>
+	<span class="p">{</span>
+		<span class="kt">var</span> <span class="n">props</span> <span class="p">=</span> <span class="k">typeof</span><span class="p">(</span><span class="n">T</span><span class="p">).</span><span class="nf">GetProperties</span><span class="p">(</span><span class="n">BindingFlags</span><span class="p">.</span><span class="n">Instance</span> <span class="p">|</span> <span class="n">BindingFlags</span><span class="p">.</span><span class="n">Public</span><span class="p">);</span>
+
+		<span class="kt">var</span> <span class="n">il</span> <span class="p">=</span> <span class="n">Emit</span><span class="p">&lt;</span><span class="n">Func</span><span class="p">&lt;</span><span class="kt">string</span><span class="p">[],</span> <span class="n">T</span><span class="p">&gt;&gt;.</span><span class="nf">NewDynamicMethod</span><span class="p">(</span><span class="s">$"from_</span><span class="p">{</span><span class="k">typeof</span><span class="p">(</span><span class="kt">string</span><span class="p">[]).</span><span class="n">FullName</span><span class="p">}</span><span class="s">_to_</span><span class="p">{</span><span class="k">typeof</span><span class="p">(</span><span class="n">T</span><span class="p">).</span><span class="n">FullName</span><span class="p">}</span><span class="s">"</span><span class="p">);</span>
+
+		<span class="kt">var</span> <span class="n">instance</span> <span class="p">=</span> <span class="n">il</span><span class="p">.</span><span class="n">DeclareLocal</span><span class="p">&lt;</span><span class="n">T</span><span class="p">&gt;();</span>
+		<span class="n">il</span><span class="p">.</span><span class="n">NewObject</span><span class="p">&lt;</span><span class="n">T</span><span class="p">&gt;();</span>
+		<span class="n">il</span><span class="p">.</span><span class="nf">StoreLocal</span><span class="p">(</span><span class="n">instance</span><span class="p">);</span>
+
+		<span class="k">foreach</span> <span class="p">(</span><span class="kt">var</span> <span class="n">prop</span> <span class="k">in</span> <span class="n">props</span><span class="p">)</span>
+		<span class="p">{</span>
+			<span class="kt">var</span> <span class="n">attrs</span> <span class="p">=</span> <span class="n">prop</span><span class="p">.</span><span class="nf">GetCustomAttributes</span><span class="p">(</span><span class="k">typeof</span><span class="p">(</span><span class="n">ArrayIndexAttribute</span><span class="p">)).</span><span class="nf">ToArray</span><span class="p">();</span>
+			<span class="k">if</span> <span class="p">(</span><span class="n">attrs</span><span class="p">.</span><span class="n">Length</span> <span class="p">==</span> <span class="m">0</span><span class="p">)</span> <span class="k">continue</span><span class="p">;</span>
+
+			<span class="kt">int</span> <span class="n">order</span> <span class="p">=</span> <span class="p">((</span><span class="n">ArrayIndexAttribute</span><span class="p">)</span><span class="n">attrs</span><span class="p">[</span><span class="m">0</span><span class="p">]).</span><span class="n">Order</span><span class="p">;</span>
+			<span class="k">if</span> <span class="p">(</span><span class="n">order</span> <span class="p">&lt;</span> <span class="m">0</span><span class="p">)</span> <span class="k">continue</span><span class="p">;</span>
+
+			<span class="kt">var</span> <span class="n">label</span> <span class="p">=</span> <span class="n">il</span><span class="p">.</span><span class="nf">DefineLabel</span><span class="p">();</span>
+
+			<span class="k">if</span> <span class="p">(</span><span class="n">prop</span><span class="p">.</span><span class="n">PropertyType</span> <span class="p">==</span> <span class="k">typeof</span><span class="p">(</span><span class="kt">string</span><span class="p">))</span>
+			<span class="p">{</span>
+				<span class="n">il</span><span class="p">.</span><span class="nf">LoadConstant</span><span class="p">(</span><span class="n">order</span><span class="p">);</span>
+				<span class="n">il</span><span class="p">.</span><span class="nf">LoadArgument</span><span class="p">(</span><span class="m">0</span><span class="p">);</span>
+				<span class="n">il</span><span class="p">.</span><span class="n">LoadLength</span><span class="p">&lt;</span><span class="kt">string</span><span class="p">&gt;();</span>
+				<span class="n">il</span><span class="p">.</span><span class="nf">BranchIfGreaterOrEqual</span><span class="p">(</span><span class="n">label</span><span class="p">);</span>
+
+				<span class="n">il</span><span class="p">.</span><span class="nf">LoadLocal</span><span class="p">(</span><span class="n">instance</span><span class="p">);</span>
+				<span class="n">il</span><span class="p">.</span><span class="nf">LoadArgument</span><span class="p">(</span><span class="m">0</span><span class="p">);</span>
+				<span class="n">il</span><span class="p">.</span><span class="nf">LoadConstant</span><span class="p">(</span><span class="n">order</span><span class="p">);</span>
+				<span class="n">il</span><span class="p">.</span><span class="n">LoadElement</span><span class="p">&lt;</span><span class="kt">string</span><span class="p">&gt;();</span>
+				<span class="n">il</span><span class="p">.</span><span class="nf">CallVirtual</span><span class="p">(</span><span class="n">prop</span><span class="p">.</span><span class="nf">GetSetMethod</span><span class="p">());</span>
+
+				<span class="n">il</span><span class="p">.</span><span class="nf">MarkLabel</span><span class="p">(</span><span class="n">label</span><span class="p">);</span>
+				<span class="k">continue</span><span class="p">;</span>
+			<span class="p">}</span>
+
+			<span class="k">if</span> <span class="p">(!</span><span class="n">TypeParsers</span><span class="p">.</span><span class="n">Parsers</span><span class="p">.</span><span class="nf">TryGetValue</span><span class="p">(</span><span class="n">prop</span><span class="p">.</span><span class="n">PropertyType</span><span class="p">,</span> <span class="k">out</span> <span class="kt">var</span> <span class="n">parser</span><span class="p">))</span>
+			<span class="p">{</span>
+				<span class="k">continue</span><span class="p">;</span>
+			<span class="p">}</span>
+
+			<span class="n">il</span><span class="p">.</span><span class="nf">LoadConstant</span><span class="p">(</span><span class="n">order</span><span class="p">);</span>
+			<span class="n">il</span><span class="p">.</span><span class="nf">LoadArgument</span><span class="p">(</span><span class="m">0</span><span class="p">);</span>
+			<span class="n">il</span><span class="p">.</span><span class="n">LoadLength</span><span class="p">&lt;</span><span class="kt">string</span><span class="p">&gt;();</span>
+			<span class="n">il</span><span class="p">.</span><span class="nf">BranchIfGreaterOrEqual</span><span class="p">(</span><span class="n">label</span><span class="p">);</span>
+
+			<span class="kt">var</span> <span class="n">parseResult</span> <span class="p">=</span> <span class="n">il</span><span class="p">.</span><span class="nf">DeclareLocal</span><span class="p">(</span><span class="n">prop</span><span class="p">.</span><span class="n">PropertyType</span><span class="p">);</span>
+			
+			<span class="n">il</span><span class="p">.</span><span class="nf">LoadArgument</span><span class="p">(</span><span class="m">0</span><span class="p">);</span>
+			<span class="n">il</span><span class="p">.</span><span class="nf">LoadConstant</span><span class="p">(</span><span class="n">order</span><span class="p">);</span>
+			<span class="n">il</span><span class="p">.</span><span class="n">LoadElement</span><span class="p">&lt;</span><span class="kt">string</span><span class="p">&gt;();</span>
+			<span class="n">il</span><span class="p">.</span><span class="nf">LoadLocalAddress</span><span class="p">(</span><span class="n">parseResult</span><span class="p">);</span>
+			<span class="n">il</span><span class="p">.</span><span class="nf">Call</span><span class="p">(</span><span class="n">parser</span><span class="p">);</span>
+			<span class="n">il</span><span class="p">.</span><span class="nf">BranchIfFalse</span><span class="p">(</span><span class="n">label</span><span class="p">);</span>
+
+			<span class="n">il</span><span class="p">.</span><span class="nf">LoadLocal</span><span class="p">(</span><span class="n">instance</span><span class="p">);</span>
+			<span class="n">il</span><span class="p">.</span><span class="nf">LoadLocal</span><span class="p">(</span><span class="n">parseResult</span><span class="p">);</span>
+			<span class="n">il</span><span class="p">.</span><span class="nf">CallVirtual</span><span class="p">(</span><span class="n">prop</span><span class="p">.</span><span class="nf">GetSetMethod</span><span class="p">());</span>
+
+			<span class="n">il</span><span class="p">.</span><span class="nf">MarkLabel</span><span class="p">(</span><span class="n">label</span><span class="p">);</span>
+		<span class="p">}</span>
+
+		<span class="n">il</span><span class="p">.</span><span class="nf">LoadLocal</span><span class="p">(</span><span class="n">instance</span><span class="p">);</span>
+		<span class="n">il</span><span class="p">.</span><span class="nf">Return</span><span class="p">();</span>
+
+		<span class="k">return</span> <span class="n">il</span><span class="p">.</span><span class="nf">CreateDelegate</span><span class="p">();</span>
+	<span class="p">}</span>
+<span class="p">}</span></code></pre></figure>
+
+<h2 id="cache-compiled-parsers">Cache compiled parsers</h2>
+
+<p>We have implemented three approaches to create a parser delegate: expression tree, emit il and sigil. In all cases we have the same problem: <code class="language-plaintext highlighter-rouge">IParserFactory.GetParser</code> does a hard job (to build an expression tree or emit il and then create a delegate) every time you call it. Solution is quite simple - just cache it:</p>
+
+<figure class="highlight"><pre><code class="language-csharp" data-lang="csharp"><span class="k">public</span> <span class="k">class</span> <span class="nc">CachedParserFactory</span> <span class="p">:</span> <span class="n">IParserFactory</span>
+<span class="p">{</span>
+	<span class="k">private</span> <span class="k">readonly</span> <span class="n">IParserFactory</span> <span class="n">_realParserFactory</span><span class="p">;</span>
+	<span class="k">private</span> <span class="k">readonly</span> <span class="n">ConcurrentDictionary</span><span class="p">&lt;</span><span class="kt">string</span><span class="p">,</span> <span class="n">Lazy</span><span class="p">&lt;</span><span class="kt">object</span><span class="p">&gt;&gt;</span> <span class="n">_cache</span><span class="p">;</span>
+
+	<span class="k">public</span> <span class="nf">CachedParserFactory</span><span class="p">(</span><span class="n">IParserFactory</span> <span class="n">realParserFactory</span><span class="p">)</span>
+	<span class="p">{</span>
+		<span class="n">_realParserFactory</span> <span class="p">=</span> <span class="n">realParserFactory</span><span class="p">;</span>
+		<span class="n">_cache</span> <span class="p">=</span> <span class="k">new</span> <span class="n">ConcurrentDictionary</span><span class="p">&lt;</span><span class="kt">string</span><span class="p">,</span> <span class="n">Lazy</span><span class="p">&lt;</span><span class="kt">object</span><span class="p">&gt;&gt;();</span>
+	<span class="p">}</span>
+
+	<span class="k">public</span> <span class="n">Func</span><span class="p">&lt;</span><span class="kt">string</span><span class="p">[],</span> <span class="n">T</span><span class="p">&gt;</span> <span class="n">GetParser</span><span class="p">&lt;</span><span class="n">T</span><span class="p">&gt;()</span> <span class="k">where</span> <span class="n">T</span> <span class="p">:</span> <span class="k">new</span><span class="p">()</span>
+	<span class="p">{</span>
+		<span class="k">return</span> <span class="p">(</span><span class="n">Func</span><span class="p">&lt;</span><span class="kt">string</span><span class="p">[],</span> <span class="n">T</span><span class="p">&gt;)(</span><span class="n">_cache</span><span class="p">.</span><span class="nf">GetOrAdd</span><span class="p">(</span><span class="s">$"aip_</span><span class="p">{</span><span class="n">_realParserFactory</span><span class="p">.</span><span class="nf">GetType</span><span class="p">().</span><span class="n">FullName</span><span class="p">}</span><span class="s">_</span><span class="p">{</span><span class="k">typeof</span><span class="p">(</span><span class="n">T</span><span class="p">).</span><span class="n">FullName</span><span class="p">}</span><span class="s">"</span><span class="p">,</span> 
+			<span class="k">new</span> <span class="n">Lazy</span><span class="p">&lt;</span><span class="kt">object</span><span class="p">&gt;(()</span> <span class="p">=&gt;</span> <span class="n">_realParserFactory</span><span class="p">.</span><span class="n">GetParser</span><span class="p">&lt;</span><span class="n">T</span><span class="p">&gt;(),</span> <span class="n">LazyThreadSafetyMode</span><span class="p">.</span><span class="n">ExecutionAndPublication</span><span class="p">)).</span><span class="n">Value</span><span class="p">);</span>
+	<span class="p">}</span>
+<span class="p">}</span></code></pre></figure>
+
+<p>Now we reuse compiled versions of delegates which is more efficient.</p>
+
+<h2 id="roslyn-based-approaches">Roslyn based approaches</h2>
+
+<p>Roslyn is a dotnet compiler platform which doesn’t only compile code but gives an ability to do syntax analysis and to generate code.</p>
+
+<h3 id="roslyn-runtime-code-generation">Roslyn runtime code generation</h3>
+<ul>
+  <li><a href="https://gunnarpeipman.com/using-roslyn-to-build-object-to-object-mapper/amp/">Using Roslyn to build object to object mapper</a></li>
+</ul>
+
+<p>Roslyn approach is quite interesting because it gives an ability to write plain C# (though as a string) instead of writing il instructions and combining  expression tree blocks:</p>
+
+<figure class="highlight"><pre><code class="language-csharp" data-lang="csharp"><span class="k">public</span> <span class="k">static</span> <span class="k">class</span> <span class="nc">RoslynParserInitializer</span>
+<span class="p">{</span>
+    <span class="k">public</span> <span class="k">static</span> <span class="n">IParserFactory</span> <span class="nf">CreateFactory</span><span class="p">()</span>
+    <span class="p">{</span>
+        <span class="c1">//get all types marked with ParserOutputAttribute</span>
+        <span class="kt">var</span> <span class="n">targetTypes</span> <span class="p">=</span>
+            <span class="p">(</span><span class="k">from</span> <span class="n">a</span> <span class="k">in</span> <span class="n">AppDomain</span><span class="p">.</span><span class="n">CurrentDomain</span><span class="p">.</span><span class="nf">GetAssemblies</span><span class="p">()</span>
+                <span class="k">from</span> <span class="n">t</span> <span class="k">in</span> <span class="n">a</span><span class="p">.</span><span class="nf">GetTypes</span><span class="p">()</span>
+                <span class="k">let</span> <span class="n">attributes</span> <span class="p">=</span> <span class="n">t</span><span class="p">.</span><span class="nf">GetCustomAttributes</span><span class="p">(</span><span class="k">typeof</span><span class="p">(</span><span class="n">ParserOutputAttribute</span><span class="p">),</span> <span class="k">true</span><span class="p">)</span>
+                <span class="k">where</span> <span class="n">attributes</span> <span class="p">!=</span> <span class="k">null</span> <span class="p">&amp;&amp;</span> <span class="n">attributes</span><span class="p">.</span><span class="n">Length</span> <span class="p">&gt;</span> <span class="m">0</span>
+                <span class="k">select</span> <span class="n">t</span><span class="p">).</span><span class="nf">ToArray</span><span class="p">();</span>
+
+        <span class="kt">var</span> <span class="n">typeNames</span> <span class="p">=</span> <span class="k">new</span> <span class="n">List</span><span class="p">&lt;(</span><span class="kt">string</span> <span class="n">TargetTypeName</span><span class="p">,</span> <span class="kt">string</span> <span class="n">TargetTypeFullName</span><span class="p">,</span> <span class="kt">string</span> <span class="n">TargetTypeParserName</span><span class="p">)&gt;();</span>
+        <span class="kt">var</span> <span class="n">builder</span> <span class="p">=</span> <span class="k">new</span> <span class="nf">StringBuilder</span><span class="p">();</span>
+        <span class="n">builder</span><span class="p">.</span><span class="nf">AppendLine</span><span class="p">(</span><span class="s">@"
+using System;
+using Parsers.Common;
+
+public class RoslynGeneratedParserFactory : IParserFactory 
+{"</span><span class="p">);</span>
+        <span class="c1">//go through all types</span>
+        <span class="k">foreach</span> <span class="p">(</span><span class="kt">var</span> <span class="n">targetType</span> <span class="k">in</span> <span class="n">targetTypes</span><span class="p">)</span>
+        <span class="p">{</span>
+            <span class="kt">var</span> <span class="n">targetTypeName</span> <span class="p">=</span> <span class="n">targetType</span><span class="p">.</span><span class="n">Name</span><span class="p">;</span>
+            <span class="kt">var</span> <span class="n">targetTypeFullName</span> <span class="p">=</span> <span class="n">targetType</span><span class="p">.</span><span class="n">FullName</span><span class="p">;</span>
+            <span class="kt">var</span> <span class="n">targetTypeParserName</span> <span class="p">=</span> <span class="n">targetTypeName</span> <span class="p">+</span> <span class="s">"Parser"</span><span class="p">;</span>
+            <span class="n">typeNames</span><span class="p">.</span><span class="nf">Add</span><span class="p">((</span><span class="n">targetTypeName</span><span class="p">,</span> <span class="n">targetTypeFullName</span><span class="p">,</span> <span class="n">targetTypeParserName</span><span class="p">));</span>
+
+            <span class="c1">//generate private parser method for each target type</span>
+            <span class="n">builder</span><span class="p">.</span><span class="nf">AppendLine</span><span class="p">(</span><span class="s">$"private static T </span><span class="p">{</span><span class="n">targetTypeParserName</span><span class="p">}</span><span class="s">&lt;T&gt;(string[] input)"</span><span class="p">);</span>
+
+            <span class="n">builder</span><span class="p">.</span><span class="nf">Append</span><span class="p">(</span><span class="s">$@"</span><span class="err">
+</span><span class="p">{{</span>
+<span class="kt">var</span> <span class="p">{</span><span class="n">targetTypeName</span><span class="p">}</span><span class="n">Instance</span> <span class="p">=</span> <span class="k">new</span> <span class="p">{</span><span class="n">targetTypeFullName</span><span class="p">}();</span><span class="s">");
+</span>
+            <span class="kt">var</span> <span class="n">props</span> <span class="p">=</span> <span class="n">targetType</span><span class="p">.</span><span class="nf">GetProperties</span><span class="p">(</span><span class="n">BindingFlags</span><span class="p">.</span><span class="n">Instance</span> <span class="p">|</span> <span class="n">BindingFlags</span><span class="p">.</span><span class="n">Public</span><span class="p">);</span>
+            
+            <span class="c1">//go through all properties of the target type</span>
+            <span class="k">foreach</span> <span class="p">(</span><span class="kt">var</span> <span class="n">prop</span> <span class="k">in</span> <span class="n">props</span><span class="p">)</span>
+            <span class="p">{</span>
+                <span class="kt">var</span> <span class="n">attrs</span> <span class="p">=</span> <span class="n">prop</span><span class="p">.</span><span class="nf">GetCustomAttributes</span><span class="p">(</span><span class="k">typeof</span><span class="p">(</span><span class="n">ArrayIndexAttribute</span><span class="p">)).</span><span class="nf">ToArray</span><span class="p">();</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">attrs</span><span class="p">.</span><span class="n">Length</span> <span class="p">==</span> <span class="m">0</span><span class="p">)</span> <span class="k">continue</span><span class="p">;</span>
+
+                <span class="kt">int</span> <span class="n">order</span> <span class="p">=</span> <span class="p">((</span><span class="n">ArrayIndexAttribute</span><span class="p">)</span><span class="n">attrs</span><span class="p">[</span><span class="m">0</span><span class="p">]).</span><span class="n">Order</span><span class="p">;</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">order</span> <span class="p">&lt;</span> <span class="m">0</span><span class="p">)</span> <span class="k">continue</span><span class="p">;</span>
+
+                <span class="k">if</span> <span class="p">(</span><span class="n">prop</span><span class="p">.</span><span class="n">PropertyType</span> <span class="p">==</span> <span class="k">typeof</span><span class="p">(</span><span class="kt">string</span><span class="p">))</span>
+                <span class="p">{</span>
+                    <span class="n">builder</span><span class="p">.</span><span class="nf">Append</span><span class="p">(</span><span class="s">$@"</span><span class="err">
+</span><span class="s">if(</span><span class="p">{</span><span class="n">order</span><span class="p">}</span><span class="s"> &lt; input.Length)</span><span class="err">
+</span><span class="p">{{</span>
+<span class="p">{</span><span class="n">targetTypeName</span><span class="p">}</span><span class="n">Instance</span><span class="p">.{</span><span class="n">prop</span><span class="p">.</span><span class="n">Name</span><span class="p">}</span> <span class="p">=</span> <span class="n">input</span><span class="p">[{</span><span class="n">order</span><span class="p">}];</span>
+<span class="p">}}</span><span class="err">
+</span><span class="s">"</span><span class="p">);</span>
+                <span class="p">}</span>
+
+                <span class="k">if</span> <span class="p">(</span><span class="n">prop</span><span class="p">.</span><span class="n">PropertyType</span> <span class="p">==</span> <span class="k">typeof</span><span class="p">(</span><span class="kt">int</span><span class="p">))</span>
+                <span class="p">{</span>
+                    <span class="n">builder</span><span class="p">.</span><span class="nf">Append</span><span class="p">(</span><span class="s">$@"</span><span class="err">
+</span><span class="s">if(</span><span class="p">{</span><span class="n">order</span><span class="p">}</span><span class="s"> &lt; input.Length &amp;&amp; int.TryParse(input[</span><span class="p">{</span><span class="n">order</span><span class="p">}</span><span class="s">], out var parsed</span><span class="p">{</span><span class="n">prop</span><span class="p">.</span><span class="n">Name</span><span class="p">}</span><span class="s">))</span><span class="err">
+</span><span class="p">{{</span>
+<span class="p">{</span><span class="n">targetTypeName</span><span class="p">}</span><span class="n">Instance</span><span class="p">.{</span><span class="n">prop</span><span class="p">.</span><span class="n">Name</span><span class="p">}</span> <span class="p">=</span> <span class="n">parsed</span><span class="p">{</span><span class="n">prop</span><span class="p">.</span><span class="n">Name</span><span class="p">};</span>
+<span class="p">}}</span><span class="err">
+</span><span class="s">"</span><span class="p">);</span>
+                <span class="p">}</span>
+
+                <span class="k">if</span> <span class="p">(</span><span class="n">prop</span><span class="p">.</span><span class="n">PropertyType</span> <span class="p">==</span> <span class="k">typeof</span><span class="p">(</span><span class="n">DateTime</span><span class="p">))</span>
+                <span class="p">{</span>
+                    <span class="n">builder</span><span class="p">.</span><span class="nf">Append</span><span class="p">(</span><span class="s">$@"</span><span class="err">
+</span><span class="s">if(</span><span class="p">{</span><span class="n">order</span><span class="p">}</span><span class="s"> &lt; input.Length &amp;&amp; DateTime.TryParse(input[</span><span class="p">{</span><span class="n">order</span><span class="p">}</span><span class="s">], out var parsed</span><span class="p">{</span><span class="n">prop</span><span class="p">.</span><span class="n">Name</span><span class="p">}</span><span class="s">))</span><span class="err">
+</span><span class="p">{{</span>
+<span class="p">{</span><span class="n">targetTypeName</span><span class="p">}</span><span class="n">Instance</span><span class="p">.{</span><span class="n">prop</span><span class="p">.</span><span class="n">Name</span><span class="p">}</span> <span class="p">=</span> <span class="n">parsed</span><span class="p">{</span><span class="n">prop</span><span class="p">.</span><span class="n">Name</span><span class="p">};</span>
+<span class="p">}}</span><span class="err">
+</span><span class="s">"</span><span class="p">);</span>
+                <span class="p">}</span>
+            <span class="p">}</span>
+
+            <span class="n">builder</span><span class="p">.</span><span class="nf">Append</span><span class="p">(</span><span class="s">$@"</span><span class="err">
+</span><span class="s">object obj = </span><span class="p">{</span><span class="n">targetTypeName</span><span class="p">}</span><span class="s">Instance;</span><span class="err">
+</span><span class="s">return (T)obj;</span><span class="err">
+</span><span class="s">}}"</span><span class="p">);</span>
+        <span class="p">}</span>
+
+        <span class="n">builder</span><span class="p">.</span><span class="nf">AppendLine</span><span class="p">(</span><span class="s">"public Func&lt;string[], T&gt; GetParser&lt;T&gt;() where T : new() {"</span><span class="p">);</span>
+        <span class="k">foreach</span> <span class="p">(</span><span class="kt">var</span> <span class="n">typeName</span> <span class="k">in</span> <span class="n">typeNames</span><span class="p">)</span>
+        <span class="p">{</span>
+            <span class="n">builder</span><span class="p">.</span><span class="nf">Append</span><span class="p">(</span><span class="s">$@"</span><span class="err">
+</span><span class="s">if (typeof(T) == typeof(</span><span class="p">{</span><span class="n">typeName</span><span class="p">.</span><span class="n">TargetTypeFullName</span><span class="p">}</span><span class="s">))</span><span class="err">
+</span><span class="p">{{</span>
+<span class="k">return</span> <span class="p">{</span><span class="n">typeName</span><span class="p">.</span><span class="n">TargetTypeParserName</span><span class="p">}&lt;</span><span class="n">T</span><span class="p">&gt;;</span>
+<span class="p">}}</span><span class="err">
+</span><span class="s">"</span><span class="p">);</span>
+        <span class="p">}</span>
+        <span class="n">builder</span><span class="p">.</span><span class="nf">AppendLine</span><span class="p">(</span><span class="s">"throw new NotSupportedException();}"</span><span class="p">);</span>
+
+        <span class="n">builder</span><span class="p">.</span><span class="nf">AppendLine</span><span class="p">(</span><span class="s">"}"</span><span class="p">);</span>
+
+        <span class="kt">var</span> <span class="n">syntaxTree</span> <span class="p">=</span> <span class="n">CSharpSyntaxTree</span><span class="p">.</span><span class="nf">ParseText</span><span class="p">(</span><span class="n">builder</span><span class="p">.</span><span class="nf">ToString</span><span class="p">());</span>
+
+        <span class="c1">//reference assemblies</span>
+        <span class="kt">string</span> <span class="n">assemblyName</span> <span class="p">=</span> <span class="n">Path</span><span class="p">.</span><span class="nf">GetRandomFileName</span><span class="p">();</span>
+        <span class="kt">var</span> <span class="n">refPaths</span> <span class="p">=</span> <span class="k">new</span> <span class="n">List</span><span class="p">&lt;</span><span class="kt">string</span><span class="p">&gt;</span> <span class="p">{</span>
+            <span class="k">typeof</span><span class="p">(</span><span class="n">Object</span><span class="p">).</span><span class="nf">GetTypeInfo</span><span class="p">().</span><span class="n">Assembly</span><span class="p">.</span><span class="n">Location</span><span class="p">,</span>
+            <span class="k">typeof</span><span class="p">(</span><span class="n">Enumerable</span><span class="p">).</span><span class="nf">GetTypeInfo</span><span class="p">().</span><span class="n">Assembly</span><span class="p">.</span><span class="n">Location</span><span class="p">,</span>
+            <span class="n">Path</span><span class="p">.</span><span class="nf">Combine</span><span class="p">(</span><span class="n">Path</span><span class="p">.</span><span class="nf">GetDirectoryName</span><span class="p">(</span><span class="k">typeof</span><span class="p">(</span><span class="n">GCSettings</span><span class="p">).</span><span class="nf">GetTypeInfo</span><span class="p">().</span><span class="n">Assembly</span><span class="p">.</span><span class="n">Location</span><span class="p">),</span> <span class="s">"System.Runtime.dll"</span><span class="p">),</span>
+            <span class="k">typeof</span><span class="p">(</span><span class="n">RoslynParserInitializer</span><span class="p">).</span><span class="nf">GetTypeInfo</span><span class="p">().</span><span class="n">Assembly</span><span class="p">.</span><span class="n">Location</span><span class="p">,</span>
+            <span class="k">typeof</span><span class="p">(</span><span class="n">IParserFactory</span><span class="p">).</span><span class="nf">GetTypeInfo</span><span class="p">().</span><span class="n">Assembly</span><span class="p">.</span><span class="n">Location</span><span class="p">,</span>
+            <span class="n">Path</span><span class="p">.</span><span class="nf">Combine</span><span class="p">(</span><span class="n">Path</span><span class="p">.</span><span class="nf">GetDirectoryName</span><span class="p">(</span><span class="k">typeof</span><span class="p">(</span><span class="n">GCSettings</span><span class="p">).</span><span class="nf">GetTypeInfo</span><span class="p">().</span><span class="n">Assembly</span><span class="p">.</span><span class="n">Location</span><span class="p">),</span> <span class="s">"netstandard.dll"</span><span class="p">),</span>
+        <span class="p">};</span>
+        <span class="n">refPaths</span><span class="p">.</span><span class="nf">AddRange</span><span class="p">(</span><span class="n">targetTypes</span><span class="p">.</span><span class="nf">Select</span><span class="p">(</span><span class="n">x</span> <span class="p">=&gt;</span> <span class="n">x</span><span class="p">.</span><span class="n">Assembly</span><span class="p">.</span><span class="n">Location</span><span class="p">));</span>
+
+        <span class="kt">var</span> <span class="n">references</span> <span class="p">=</span> <span class="n">refPaths</span><span class="p">.</span><span class="nf">Select</span><span class="p">(</span><span class="n">r</span> <span class="p">=&gt;</span> <span class="n">MetadataReference</span><span class="p">.</span><span class="nf">CreateFromFile</span><span class="p">(</span><span class="n">r</span><span class="p">)).</span><span class="nf">ToArray</span><span class="p">();</span>
+
+        <span class="c1">// compile dynamic code</span>
+        <span class="kt">var</span> <span class="n">compilation</span> <span class="p">=</span> <span class="n">CSharpCompilation</span><span class="p">.</span><span class="nf">Create</span><span class="p">(</span>
+            <span class="n">assemblyName</span><span class="p">,</span>
+            <span class="n">syntaxTrees</span><span class="p">:</span> <span class="k">new</span><span class="p">[]</span> <span class="p">{</span> <span class="n">syntaxTree</span> <span class="p">},</span>
+            <span class="n">references</span><span class="p">:</span> <span class="n">references</span><span class="p">,</span>
+            <span class="n">options</span><span class="p">:</span> <span class="k">new</span> <span class="nf">CSharpCompilationOptions</span><span class="p">(</span><span class="n">OutputKind</span><span class="p">.</span><span class="n">DynamicallyLinkedLibrary</span><span class="p">));</span>
+
+        <span class="c1">//compile assembly</span>
+        <span class="k">using</span> <span class="p">(</span><span class="kt">var</span> <span class="n">ms</span> <span class="p">=</span> <span class="k">new</span> <span class="nf">MemoryStream</span><span class="p">())</span>
+        <span class="p">{</span>
+            <span class="kt">var</span> <span class="n">result</span> <span class="p">=</span> <span class="n">compilation</span><span class="p">.</span><span class="nf">Emit</span><span class="p">(</span><span class="n">ms</span><span class="p">);</span>
+
+            <span class="c1">//to get a proper errors</span>
+            <span class="k">if</span> <span class="p">(!</span><span class="n">result</span><span class="p">.</span><span class="n">Success</span><span class="p">)</span>
+            <span class="p">{</span>
+                <span class="k">throw</span> <span class="k">new</span> <span class="nf">Exception</span><span class="p">(</span><span class="kt">string</span><span class="p">.</span><span class="nf">Join</span><span class="p">(</span><span class="s">","</span><span class="p">,</span> <span class="n">result</span><span class="p">.</span><span class="n">Diagnostics</span><span class="p">.</span><span class="nf">Where</span><span class="p">(</span><span class="n">diagnostic</span> <span class="p">=&gt;</span>
+                    <span class="n">diagnostic</span><span class="p">.</span><span class="n">IsWarningAsError</span> <span class="p">||</span>
+                    <span class="n">diagnostic</span><span class="p">.</span><span class="n">Severity</span> <span class="p">==</span> <span class="n">DiagnosticSeverity</span><span class="p">.</span><span class="n">Error</span><span class="p">).</span><span class="nf">Select</span><span class="p">(</span><span class="n">x</span> <span class="p">=&gt;</span> <span class="n">x</span><span class="p">.</span><span class="nf">GetMessage</span><span class="p">())));</span>
+            <span class="p">}</span>
+            <span class="n">ms</span><span class="p">.</span><span class="nf">Seek</span><span class="p">(</span><span class="m">0</span><span class="p">,</span> <span class="n">SeekOrigin</span><span class="p">.</span><span class="n">Begin</span><span class="p">);</span>
+
+            <span class="c1">// load assembly from memory</span>
+            <span class="kt">var</span> <span class="n">assembly</span> <span class="p">=</span> <span class="n">AssemblyLoadContext</span><span class="p">.</span><span class="n">Default</span><span class="p">.</span><span class="nf">LoadFromStream</span><span class="p">(</span><span class="n">ms</span><span class="p">);</span>
+
+            <span class="kt">var</span> <span class="n">factoryType</span> <span class="p">=</span> <span class="n">assembly</span><span class="p">.</span><span class="nf">GetType</span><span class="p">(</span><span class="s">"RoslynGeneratedParserFactory"</span><span class="p">);</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">factoryType</span> <span class="p">==</span> <span class="k">null</span><span class="p">)</span> <span class="k">throw</span> <span class="k">new</span> <span class="nf">NullReferenceException</span><span class="p">(</span><span class="s">"Roslyn generated parser type not found"</span><span class="p">);</span>
+
+            <span class="c1">//create an instance of freshly generated parser factory</span>
+            <span class="k">return</span> <span class="p">(</span><span class="n">IParserFactory</span><span class="p">)</span><span class="n">Activator</span><span class="p">.</span><span class="nf">CreateInstance</span><span class="p">(</span><span class="n">factoryType</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">}</span><span class="err">
+</span><span class="s">}</span></code></pre></figure>
+
+<h3 id="source-generator">Source generator</h3>
+<ul>
+  <li>Overview of source generators from the <a href="https://docs.microsoft.com/en-us/dotnet/csharp/roslyn-sdk/source-generators-overview">official documentation</a></li>
+</ul>
+
+<p>Source generator gives very interesting ability to create all parsers during compilation step, i.e. in advance. So in that case we don’t have any runtime overhead to build a parser delegate at the first time which is amazing:</p>
+
+<figure class="highlight"><pre><code class="language-csharp" data-lang="csharp"><span class="p">[</span><span class="n">Generator</span><span class="p">]</span>
+<span class="k">public</span> <span class="k">class</span> <span class="nc">ParserSourceGenerator</span> <span class="p">:</span> <span class="n">ISourceGenerator</span>
+<span class="p">{</span>
+	<span class="k">public</span> <span class="k">void</span> <span class="nf">Initialize</span><span class="p">(</span><span class="n">GeneratorInitializationContext</span> <span class="n">context</span><span class="p">)</span>
+	<span class="p">{</span>
+		<span class="c1">//uncomment to debug</span>
+		<span class="c1">//System.Diagnostics.Debugger.Launch();</span>
+	<span class="p">}</span>
+
+	<span class="k">public</span> <span class="k">void</span> <span class="nf">Execute</span><span class="p">(</span><span class="n">GeneratorExecutionContext</span> <span class="n">context</span><span class="p">)</span>
+	<span class="p">{</span>
+		<span class="kt">var</span> <span class="n">compilation</span> <span class="p">=</span> <span class="n">context</span><span class="p">.</span><span class="n">Compilation</span><span class="p">;</span>
+		<span class="kt">var</span> <span class="n">parserOutputTypeSymbol</span> <span class="p">=</span> <span class="n">compilation</span><span class="p">.</span><span class="nf">GetTypeByMetadataName</span><span class="p">(</span><span class="s">"Parsers.Common.ParserOutputAttribute"</span><span class="p">);</span>
+		<span class="kt">var</span> <span class="n">attributeIndexTypeSymbol</span> <span class="p">=</span> <span class="n">compilation</span><span class="p">.</span><span class="nf">GetTypeByMetadataName</span><span class="p">(</span><span class="s">"Parsers.Common.ArrayIndexAttribute"</span><span class="p">);</span>
+		<span class="kt">var</span> <span class="n">typesToParse</span> <span class="p">=</span> <span class="k">new</span> <span class="n">List</span><span class="p">&lt;</span><span class="n">ITypeSymbol</span><span class="p">&gt;();</span>
+
+		<span class="k">foreach</span> <span class="p">(</span><span class="kt">var</span> <span class="n">syntaxTree</span> <span class="k">in</span> <span class="n">compilation</span><span class="p">.</span><span class="n">SyntaxTrees</span><span class="p">)</span>
+		<span class="p">{</span>
+			<span class="kt">var</span> <span class="n">semanticModel</span> <span class="p">=</span> <span class="n">compilation</span><span class="p">.</span><span class="nf">GetSemanticModel</span><span class="p">(</span><span class="n">syntaxTree</span><span class="p">);</span>
+
+            <span class="c1">//get all types marked with ParserOutputAttribute</span>
+			<span class="n">typesToParse</span><span class="p">.</span><span class="nf">AddRange</span><span class="p">(</span><span class="n">syntaxTree</span><span class="p">.</span><span class="nf">GetRoot</span><span class="p">()</span>
+				<span class="p">.</span><span class="nf">DescendantNodesAndSelf</span><span class="p">()</span>
+				<span class="p">.</span><span class="n">OfType</span><span class="p">&lt;</span><span class="n">ClassDeclarationSyntax</span><span class="p">&gt;()</span>
+				<span class="p">.</span><span class="nf">Select</span><span class="p">(</span><span class="n">x</span> <span class="p">=&gt;</span> <span class="n">semanticModel</span><span class="p">.</span><span class="nf">GetDeclaredSymbol</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+				<span class="p">.</span><span class="n">OfType</span><span class="p">&lt;</span><span class="n">ITypeSymbol</span><span class="p">&gt;()</span>
+				<span class="p">.</span><span class="nf">Where</span><span class="p">(</span><span class="n">x</span> <span class="p">=&gt;</span> <span class="n">x</span><span class="p">.</span><span class="nf">GetAttributes</span><span class="p">().</span><span class="nf">Select</span><span class="p">(</span><span class="n">a</span> <span class="p">=&gt;</span> <span class="n">a</span><span class="p">.</span><span class="n">AttributeClass</span><span class="p">)</span>
+					<span class="p">.</span><span class="nf">Any</span><span class="p">(</span><span class="n">b</span> <span class="p">=&gt;</span> <span class="n">b</span> <span class="p">==</span> <span class="n">parserOutputTypeSymbol</span><span class="p">)));</span>
+		<span class="p">}</span>
+
+		<span class="kt">var</span> <span class="n">typeNames</span> <span class="p">=</span> <span class="k">new</span> <span class="n">List</span><span class="p">&lt;(</span><span class="kt">string</span> <span class="n">TargetTypeName</span><span class="p">,</span> <span class="kt">string</span> <span class="n">TargetTypeFullName</span><span class="p">,</span> <span class="kt">string</span> <span class="n">TargetTypeParserName</span><span class="p">)&gt;();</span>
+		<span class="kt">var</span> <span class="n">builder</span> <span class="p">=</span> <span class="k">new</span> <span class="nf">StringBuilder</span><span class="p">();</span>
+		<span class="n">builder</span><span class="p">.</span><span class="nf">AppendLine</span><span class="p">(</span><span class="s">@"
+using System;
+using Parsers.Common;
+namespace BySourceGenerator
+{
+public class Parser : IParserFactory 
+{"</span><span class="p">);</span>
+
+        <span class="c1">//go through all types</span>
+		<span class="k">foreach</span> <span class="p">(</span><span class="kt">var</span> <span class="n">typeSymbol</span> <span class="k">in</span> <span class="n">typesToParse</span><span class="p">)</span>
+		<span class="p">{</span>
+			<span class="kt">var</span> <span class="n">targetTypeName</span> <span class="p">=</span> <span class="n">typeSymbol</span><span class="p">.</span><span class="n">Name</span><span class="p">;</span>
+			<span class="kt">var</span> <span class="n">targetTypeFullName</span> <span class="p">=</span> <span class="nf">GetFullName</span><span class="p">(</span><span class="n">typeSymbol</span><span class="p">);</span>
+			<span class="kt">var</span> <span class="n">targetTypeParserName</span> <span class="p">=</span> <span class="n">targetTypeName</span> <span class="p">+</span> <span class="s">"Parser"</span><span class="p">;</span>
+			<span class="n">typeNames</span><span class="p">.</span><span class="nf">Add</span><span class="p">((</span><span class="n">targetTypeName</span><span class="p">,</span> <span class="n">targetTypeFullName</span><span class="p">,</span> <span class="n">targetTypeParserName</span><span class="p">));</span>
+			<span class="n">builder</span><span class="p">.</span><span class="nf">AppendLine</span><span class="p">(</span><span class="s">$"private static T </span><span class="p">{</span><span class="n">targetTypeParserName</span><span class="p">}</span><span class="s">&lt;T&gt;(string[] input)"</span><span class="p">);</span>
+
+			<span class="n">builder</span><span class="p">.</span><span class="nf">Append</span><span class="p">(</span><span class="s">$@"</span><span class="err">
+</span><span class="p">{{</span>
+<span class="kt">var</span> <span class="p">{</span><span class="n">targetTypeName</span><span class="p">}</span><span class="n">Instance</span> <span class="p">=</span> <span class="k">new</span> <span class="p">{</span><span class="n">targetTypeFullName</span><span class="p">}();</span><span class="s">");
+</span>
+			<span class="kt">var</span> <span class="n">props</span> <span class="p">=</span> <span class="n">typeSymbol</span><span class="p">.</span><span class="nf">GetMembers</span><span class="p">().</span><span class="n">OfType</span><span class="p">&lt;</span><span class="n">IPropertySymbol</span><span class="p">&gt;();</span>
+
+            <span class="c1">//go through all properties of the target type</span>
+			<span class="k">foreach</span> <span class="p">(</span><span class="kt">var</span> <span class="n">prop</span> <span class="k">in</span> <span class="n">props</span><span class="p">)</span>
+			<span class="p">{</span>
+				<span class="kt">var</span> <span class="n">attr</span> <span class="p">=</span> <span class="n">prop</span><span class="p">.</span><span class="nf">GetAttributes</span><span class="p">().</span><span class="nf">FirstOrDefault</span><span class="p">(</span><span class="n">x</span> <span class="p">=&gt;</span> <span class="n">x</span><span class="p">.</span><span class="n">AttributeClass</span> <span class="p">==</span> <span class="n">attributeIndexTypeSymbol</span><span class="p">);</span>
+				<span class="k">if</span> <span class="p">(</span><span class="n">attr</span> <span class="p">==</span> <span class="k">null</span> <span class="p">||</span> <span class="p">!(</span><span class="n">attr</span><span class="p">.</span><span class="n">ConstructorArguments</span><span class="p">[</span><span class="m">0</span><span class="p">].</span><span class="n">Value</span> <span class="k">is</span> <span class="kt">int</span><span class="p">))</span> <span class="k">continue</span><span class="p">;</span>
+
+				<span class="kt">int</span> <span class="n">order</span> <span class="p">=</span> <span class="p">(</span><span class="kt">int</span><span class="p">)</span> <span class="n">attr</span><span class="p">.</span><span class="n">ConstructorArguments</span><span class="p">[</span><span class="m">0</span><span class="p">].</span><span class="n">Value</span><span class="p">;</span>
+				<span class="k">if</span> <span class="p">(</span><span class="n">order</span> <span class="p">&lt;</span> <span class="m">0</span><span class="p">)</span> <span class="k">continue</span><span class="p">;</span>
+
+				<span class="k">if</span> <span class="p">(</span><span class="nf">GetFullName</span><span class="p">(</span><span class="n">prop</span><span class="p">.</span><span class="n">Type</span><span class="p">)</span> <span class="p">==</span> <span class="s">"System.String"</span><span class="p">)</span>
+				<span class="p">{</span>
+					<span class="n">builder</span><span class="p">.</span><span class="nf">Append</span><span class="p">(</span><span class="s">$@"</span><span class="err">
+</span><span class="s">if(</span><span class="p">{</span><span class="n">order</span><span class="p">}</span><span class="s"> &lt; input.Length)</span><span class="err">
+</span><span class="p">{{</span>
+<span class="p">{</span><span class="n">targetTypeName</span><span class="p">}</span><span class="n">Instance</span><span class="p">.{</span><span class="n">prop</span><span class="p">.</span><span class="n">Name</span><span class="p">}</span> <span class="p">=</span> <span class="n">input</span><span class="p">[{</span><span class="n">order</span><span class="p">}];</span>
+<span class="p">}}</span><span class="err">
+</span><span class="s">"</span><span class="p">);</span>
+				<span class="p">}</span>
+
+				<span class="k">if</span> <span class="p">(</span><span class="nf">GetFullName</span><span class="p">(</span><span class="n">prop</span><span class="p">.</span><span class="n">Type</span><span class="p">)</span> <span class="p">==</span> <span class="s">"System.Int32"</span><span class="p">)</span>
+				<span class="p">{</span>
+					<span class="n">builder</span><span class="p">.</span><span class="nf">Append</span><span class="p">(</span><span class="s">$@"</span><span class="err">
+</span><span class="s">if(</span><span class="p">{</span><span class="n">order</span><span class="p">}</span><span class="s"> &lt; input.Length &amp;&amp; int.TryParse(input[</span><span class="p">{</span><span class="n">order</span><span class="p">}</span><span class="s">], out var parsed</span><span class="p">{</span><span class="n">prop</span><span class="p">.</span><span class="n">Name</span><span class="p">}</span><span class="s">))</span><span class="err">
+</span><span class="p">{{</span>
+<span class="p">{</span><span class="n">targetTypeName</span><span class="p">}</span><span class="n">Instance</span><span class="p">.{</span><span class="n">prop</span><span class="p">.</span><span class="n">Name</span><span class="p">}</span> <span class="p">=</span> <span class="n">parsed</span><span class="p">{</span><span class="n">prop</span><span class="p">.</span><span class="n">Name</span><span class="p">};</span>
+<span class="p">}}</span><span class="err">
+</span><span class="s">"</span><span class="p">);</span>
+				<span class="p">}</span>
+
+				<span class="k">if</span> <span class="p">(</span><span class="nf">GetFullName</span><span class="p">(</span><span class="n">prop</span><span class="p">.</span><span class="n">Type</span><span class="p">)</span> <span class="p">==</span> <span class="s">"System.DateTime"</span><span class="p">)</span>
+				<span class="p">{</span>
+					<span class="n">builder</span><span class="p">.</span><span class="nf">Append</span><span class="p">(</span><span class="s">$@"</span><span class="err">
+</span><span class="s">if(</span><span class="p">{</span><span class="n">order</span><span class="p">}</span><span class="s"> &lt; input.Length &amp;&amp; DateTime.TryParse(input[</span><span class="p">{</span><span class="n">order</span><span class="p">}</span><span class="s">], out var parsed</span><span class="p">{</span><span class="n">prop</span><span class="p">.</span><span class="n">Name</span><span class="p">}</span><span class="s">))</span><span class="err">
+</span><span class="p">{{</span>
+<span class="p">{</span><span class="n">targetTypeName</span><span class="p">}</span><span class="n">Instance</span><span class="p">.{</span><span class="n">prop</span><span class="p">.</span><span class="n">Name</span><span class="p">}</span> <span class="p">=</span> <span class="n">parsed</span><span class="p">{</span><span class="n">prop</span><span class="p">.</span><span class="n">Name</span><span class="p">};</span>
+<span class="p">}}</span><span class="err">
+</span><span class="s">"</span><span class="p">);</span>
+				<span class="p">}</span>
+			<span class="p">}</span>
+
+			<span class="n">builder</span><span class="p">.</span><span class="nf">Append</span><span class="p">(</span><span class="s">$@"</span><span class="err">
+</span><span class="s">object obj = </span><span class="p">{</span><span class="n">targetTypeName</span><span class="p">}</span><span class="s">Instance;</span><span class="err">
+</span><span class="s">return (T)obj;</span><span class="err">
+</span><span class="s">}}"</span><span class="p">);</span>
+		<span class="p">}</span>
+
+		<span class="n">builder</span><span class="p">.</span><span class="nf">AppendLine</span><span class="p">(</span><span class="s">"public Func&lt;string[], T&gt; GetParser&lt;T&gt;() where T : new() {"</span><span class="p">);</span>
+		<span class="k">foreach</span> <span class="p">(</span><span class="kt">var</span> <span class="n">typeName</span> <span class="k">in</span> <span class="n">typeNames</span><span class="p">)</span>
+		<span class="p">{</span>
+			<span class="n">builder</span><span class="p">.</span><span class="nf">Append</span><span class="p">(</span><span class="s">$@"</span><span class="err">
+</span><span class="s">if (typeof(T) == typeof(</span><span class="p">{</span><span class="n">typeName</span><span class="p">.</span><span class="n">TargetTypeFullName</span><span class="p">}</span><span class="s">))</span><span class="err">
+</span><span class="p">{{</span>
+<span class="k">return</span> <span class="p">{</span><span class="n">typeName</span><span class="p">.</span><span class="n">TargetTypeParserName</span><span class="p">}&lt;</span><span class="n">T</span><span class="p">&gt;;</span>
+<span class="p">}}</span><span class="err">
+</span><span class="s">"</span><span class="p">);</span>
+		<span class="p">}</span>
+
+		<span class="n">builder</span><span class="p">.</span><span class="nf">AppendLine</span><span class="p">(</span><span class="s">"throw new NotSupportedException();}"</span><span class="p">);</span>
+
+		<span class="n">builder</span><span class="p">.</span><span class="nf">AppendLine</span><span class="p">(</span><span class="s">"}}"</span><span class="p">);</span>
+
+		<span class="kt">var</span> <span class="n">src</span> <span class="p">=</span> <span class="n">builder</span><span class="p">.</span><span class="nf">ToString</span><span class="p">();</span>
+		<span class="n">context</span><span class="p">.</span><span class="nf">AddSource</span><span class="p">(</span>
+			<span class="s">"ParserGeneratedBySourceGenerator.cs"</span><span class="p">,</span>
+			<span class="n">SourceText</span><span class="p">.</span><span class="nf">From</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">)</span>
+		<span class="p">);</span>
+	<span class="p">}</span><span class="err">
+
+</span><span class="s">	private static string GetFullName(ITypeSymbol typeSymbol) =&gt;</span><span class="err">
+</span><span class="s">		$"</span><span class="p">{</span><span class="n">typeSymbol</span><span class="p">.</span><span class="n">ContainingNamespace</span><span class="p">}.{</span><span class="n">typeSymbol</span><span class="p">.</span><span class="n">Name</span><span class="p">}</span><span class="s">";
+</span><span class="p">}</span></code></pre></figure>
+
+<h1 id="benchmarks">Benchmarks</h1>
+
+<p>The post wouldn’t be completed without benchamrks. Here I want to compare two things:</p>
+<ul>
+  <li>warm up step, i.e. generation of parser;</li>
+  <li>invocation of already generated parser.</li>
+</ul>
+
+<p>Benchmarks are measured using <a href="https://github.com/dotnet/BenchmarkDotNet">BenchmarkDotNet</a>.</p>
+
+<pre><code>
+BenchmarkDotNet=v0.13.1, OS=Windows 10.0.19043.1237 (21H1/May2021Update)
+Intel Core i7-8550U CPU 1.80GHz (Kaby Lake R), 1 CPU, 8 logical and 4 physical cores
+.NET SDK=5.0.401
+[Host] : .NET 5.0.10 (5.0.1021.41214), X64 RyuJIT
+DefaultJob : .NET 5.0.10 (5.0.1021.41214), X64 RyuJIT
+</code></pre>
+
+<table>
+<thead><tr><th> Method</th><th> Mean</th><th> Error</th><th> StdDev</th><th> Median</th><th>Gen 0</th><th>Gen 1</th><th>Allocated</th>
+</tr>
+</thead><tbody><tr><td>GetParser_EmitIl</td><td>21,674.487 ns</td><td>432.3948 ns</td><td>1,205.3440 ns</td><td>21,405.957 ns</td><td>1.2817</td><td>0.6409</td><td>5,472 B</td>
+</tr><tr><td>GetParser_ExpressionTree</td><td>728,408.643 ns</td><td>16,212.6425 ns</td><td>47,548.8739 ns</td><td>715,700.293 ns</td><td>2.9297</td><td>0.9766</td><td>13,926 B</td>
+</tr><tr><td>GetParser_Sigil</td><td>668,290.456 ns</td><td>14,567.7839 ns</td><td>42,031.3875 ns</td><td>657,595.947 ns</td><td>112.3047</td><td>-</td><td>470,727 B</td>
+</tr><tr><td>GetParser_Roslyn</td><td>60,652,769.231 ns</td><td>1,199,616.1232 ns</td><td>2,804,064.0147 ns</td><td>60,564,942.857 ns</td><td>1000.0000</td><td>285.7143</td><td>6,257,459 B</td>
+</tr><tr><td>ParserInvocation_EmitIl</td><td>395.822 ns</td><td>8.5046 ns</td><td>25.0761 ns</td><td>390.066 ns</td><td>0.0095</td><td>-</td><td>40 B</td>
+</tr><tr><td>ParserInvocation_ExpressionTree</td><td>385.048 ns</td><td>7.7925 ns</td><td>21.8511 ns</td><td>380.575 ns</td><td>0.0095</td><td>-</td><td>40 B</td>
+</tr><tr><td>ParserInvocation_Reflection</td><td>13,064.371 ns</td><td>277.1491 ns</td><td>812.8303 ns</td><td>12,883.695 ns</td><td>0.7782</td><td>-</td><td>3,256 B</td>
+</tr><tr><td>ParserInvocation_Sigil</td><td>386.315 ns</td><td>7.8140 ns</td><td>18.1102 ns</td><td>383.428 ns</td><td>0.0095</td><td>-</td><td>40 B</td>
+</tr><tr><td>ParserInvocation_Roslyn</td><td>403.248 ns</td><td>8.1247 ns</td><td>21.9656 ns</td><td>399.653 ns</td><td>0.0095</td><td>-</td><td>40 B</td>
+</tr><tr><td>ParserInvocation_SourceGenerator</td><td>385.155 ns</td><td>8.6582 ns</td><td>24.8419 ns</td><td>379.948 ns</td><td>0.0095</td><td>-</td><td>40 B</td>
+</tr><tr><td>NativeCall</td><td>383.488 ns</td><td>7.7245 ns</td><td>21.4046 ns</td><td>380.181 ns</td><td>0.0095</td><td>-</td><td>40 B</td>
+</tr></tbody></table>
+
+<h1 id="source-code">Source code</h1>
+
+<p>Here is <a href="https://github.com/MaximTkachenko/dotnet-code-generation-overview-by-example">github repository</a> with parser factories, unit tests and benchmarks.</p>
+
+  </div><a class="u-url" href="/blog/dotnet/2021/10/03/dotnet-code-generation.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/blog/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">One more blog about software engineering</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">One more blog about software engineering</li><li><a class="u-email" href="mailto:oblomov86@gmail.com">oblomov86@gmail.com</a></li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/maximtkachenko"><svg class="svg-icon"><use xlink:href="/blog/assets/minima-social-icons.svg#github"></use></svg> <span class="username">maximtkachenko</span></a></li><li><a href="https://www.twitter.com/mtkachenk0"><svg class="svg-icon"><use xlink:href="/blog/assets/minima-social-icons.svg#twitter"></use></svg> <span class="username">mtkachenk0</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description.</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>
