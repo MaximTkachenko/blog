@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.2.0">Jekyll</generator><link href="https://mtkachenko.me/blog/feed.xml" rel="self" type="application/atom+xml" /><link href="https://mtkachenko.me/blog/" rel="alternate" type="text/html" /><updated>2021-10-03T18:37:00+02:00</updated><id>https://mtkachenko.me/blog/feed.xml</id><title type="html">One more blog about software engineering</title><subtitle>Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description.</subtitle><entry><title type="html">Dotnet code generation overview by example</title><link href="https://mtkachenko.me/blog/dotnet/2021/10/03/dotnet-code-generation.html" rel="alternate" type="text/html" title="Dotnet code generation overview by example" /><published>2021-10-03T00:00:00+02:00</published><updated>2021-10-03T00:00:00+02:00</updated><id>https://mtkachenko.me/blog/dotnet/2021/10/03/dotnet-code-generation</id><content type="html" xml:base="https://mtkachenko.me/blog/dotnet/2021/10/03/dotnet-code-generation.html">&lt;h1 id=&quot;introduction&quot;&gt;Introduction&lt;/h1&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.2.0">Jekyll</generator><link href="https://mtkachenko.me/blog/feed.xml" rel="self" type="application/atom+xml" /><link href="https://mtkachenko.me/blog/" rel="alternate" type="text/html" /><updated>2021-10-04T21:32:59+02:00</updated><id>https://mtkachenko.me/blog/feed.xml</id><title type="html">One more blog about software engineering</title><subtitle>Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description.</subtitle><entry><title type="html">Dotnet code generation overview by example</title><link href="https://mtkachenko.me/blog/2021/10/03/dotnet-code-generation.html" rel="alternate" type="text/html" title="Dotnet code generation overview by example" /><published>2021-10-03T00:00:00+02:00</published><updated>2021-10-03T00:00:00+02:00</updated><id>https://mtkachenko.me/blog/2021/10/03/dotnet-code-generation</id><content type="html" xml:base="https://mtkachenko.me/blog/2021/10/03/dotnet-code-generation.html">&lt;h1 id=&quot;introduction&quot;&gt;Introduction&lt;/h1&gt;
 
 &lt;p&gt;Code generation is a very interesting topic. Instead of just writing code you can write code to write code. You can do code generation in compile time (new fancy source generators) and in runtime (expressions, emit il). Anyway an idea to create methods and classes in runtime sounds like a magic for me. Runtime code generation feature is quite heavily used in guts of DI frameworks, ORMs, different types of object mappers etc. Now that I have a sufficient understanding of the topic I realized that in the past I had some tasks which could be solved in a very efficient and elegant way using code generation. Unfortunately during those times I knew nothing about it. Search on the internet gave me results with quite high entry threshold and they didn’t give an entire understanding of the feature. Also in some articles examples are quite trivial that it’s still unclear how to apply it in practice. Here I want first to describe a particular problem which could be solved with &lt;a href=&quot;https://en.wikipedia.org/wiki/Metaprogramming&quot;&gt;metaprogramming&lt;/a&gt; and then to give an overview of different code generation approaches. There will be a lot of code.&lt;/p&gt;
 
@@ -6,7 +6,7 @@
 
 &lt;p&gt;Let’s imagine our application receives a data from some source as a an array of strings (for simplicity only string, integer and datetime values are expected in an input array):&lt;/p&gt;
 
-&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-json&quot; data-lang=&quot;json&quot;&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;John McClane&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;1994-11-05T13:15:30&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;4455&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-json&quot; data-lang=&quot;json&quot;&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;John McClane&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;1994-11-05T13:15:30&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;4455&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
 
 &lt;p&gt;I need a generic way to parse this input into an instance of a particular class. This is an interface to create a parser delegate (i.e. it accepts an array of strings as an input and returns an instance of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;T&lt;/code&gt; as an output):&lt;/p&gt;
 
@@ -684,7 +684,7 @@ public class Parser : IParserFactory
 
 &lt;h1 id=&quot;benchmarks&quot;&gt;Benchmarks&lt;/h1&gt;
 
-&lt;p&gt;The post wouldn’t be completed without benchamrks. Here I want to compare two things:&lt;/p&gt;
+&lt;p&gt;The post wouldn’t be completed without benchmarks. Here I want to compare two things:&lt;/p&gt;
 &lt;ul&gt;
   &lt;li&gt;warm up step, i.e. generation of parser;&lt;/li&gt;
   &lt;li&gt;invocation of already generated parser.&lt;/li&gt;
@@ -696,24 +696,31 @@ public class Parser : IParserFactory
 BenchmarkDotNet=v0.13.1, OS=Windows 10.0.19043.1237 (21H1/May2021Update)
 Intel Core i7-8550U CPU 1.80GHz (Kaby Lake R), 1 CPU, 8 logical and 4 physical cores
 .NET SDK=5.0.401
-[Host] : .NET 5.0.10 (5.0.1021.41214), X64 RyuJIT
-DefaultJob : .NET 5.0.10 (5.0.1021.41214), X64 RyuJIT
+  [Host]     : .NET 5.0.10 (5.0.1021.41214), X64 RyuJIT
+  DefaultJob : .NET 5.0.10 (5.0.1021.41214), X64 RyuJIT
 &lt;/code&gt;&lt;/pre&gt;
 
+&lt;h2 id=&quot;generation-of-parser&quot;&gt;Generation of parser&lt;/h2&gt;
 &lt;table&gt;
-&lt;thead&gt;&lt;tr&gt;&lt;th&gt; Method&lt;/th&gt;&lt;th&gt; Mean&lt;/th&gt;&lt;th&gt; Error&lt;/th&gt;&lt;th&gt; StdDev&lt;/th&gt;&lt;th&gt; Median&lt;/th&gt;&lt;th&gt;Gen 0&lt;/th&gt;&lt;th&gt;Gen 1&lt;/th&gt;&lt;th&gt;Allocated&lt;/th&gt;
+&lt;thead&gt;&lt;tr&gt;&lt;th&gt;  Method&lt;/th&gt;&lt;th&gt;  Mean&lt;/th&gt;&lt;th&gt; Error&lt;/th&gt;&lt;th&gt;StdDev&lt;/th&gt;&lt;th&gt;Gen 0&lt;/th&gt;&lt;th&gt;Gen 1&lt;/th&gt;&lt;th&gt;Gen 2&lt;/th&gt;&lt;th&gt;Allocated&lt;/th&gt;
 &lt;/tr&gt;
-&lt;/thead&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td&gt;GetParser_EmitIl&lt;/td&gt;&lt;td&gt;21,674.487 ns&lt;/td&gt;&lt;td&gt;432.3948 ns&lt;/td&gt;&lt;td&gt;1,205.3440 ns&lt;/td&gt;&lt;td&gt;21,405.957 ns&lt;/td&gt;&lt;td&gt;1.2817&lt;/td&gt;&lt;td&gt;0.6409&lt;/td&gt;&lt;td&gt;5,472 B&lt;/td&gt;
-&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;GetParser_ExpressionTree&lt;/td&gt;&lt;td&gt;728,408.643 ns&lt;/td&gt;&lt;td&gt;16,212.6425 ns&lt;/td&gt;&lt;td&gt;47,548.8739 ns&lt;/td&gt;&lt;td&gt;715,700.293 ns&lt;/td&gt;&lt;td&gt;2.9297&lt;/td&gt;&lt;td&gt;0.9766&lt;/td&gt;&lt;td&gt;13,926 B&lt;/td&gt;
-&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;GetParser_Sigil&lt;/td&gt;&lt;td&gt;668,290.456 ns&lt;/td&gt;&lt;td&gt;14,567.7839 ns&lt;/td&gt;&lt;td&gt;42,031.3875 ns&lt;/td&gt;&lt;td&gt;657,595.947 ns&lt;/td&gt;&lt;td&gt;112.3047&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;470,727 B&lt;/td&gt;
-&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;GetParser_Roslyn&lt;/td&gt;&lt;td&gt;60,652,769.231 ns&lt;/td&gt;&lt;td&gt;1,199,616.1232 ns&lt;/td&gt;&lt;td&gt;2,804,064.0147 ns&lt;/td&gt;&lt;td&gt;60,564,942.857 ns&lt;/td&gt;&lt;td&gt;1000.0000&lt;/td&gt;&lt;td&gt;285.7143&lt;/td&gt;&lt;td&gt;6,257,459 B&lt;/td&gt;
-&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;ParserInvocation_EmitIl&lt;/td&gt;&lt;td&gt;395.822 ns&lt;/td&gt;&lt;td&gt;8.5046 ns&lt;/td&gt;&lt;td&gt;25.0761 ns&lt;/td&gt;&lt;td&gt;390.066 ns&lt;/td&gt;&lt;td&gt;0.0095&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;40 B&lt;/td&gt;
-&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;ParserInvocation_ExpressionTree&lt;/td&gt;&lt;td&gt;385.048 ns&lt;/td&gt;&lt;td&gt;7.7925 ns&lt;/td&gt;&lt;td&gt;21.8511 ns&lt;/td&gt;&lt;td&gt;380.575 ns&lt;/td&gt;&lt;td&gt;0.0095&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;40 B&lt;/td&gt;
-&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;ParserInvocation_Reflection&lt;/td&gt;&lt;td&gt;13,064.371 ns&lt;/td&gt;&lt;td&gt;277.1491 ns&lt;/td&gt;&lt;td&gt;812.8303 ns&lt;/td&gt;&lt;td&gt;12,883.695 ns&lt;/td&gt;&lt;td&gt;0.7782&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;3,256 B&lt;/td&gt;
-&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;ParserInvocation_Sigil&lt;/td&gt;&lt;td&gt;386.315 ns&lt;/td&gt;&lt;td&gt;7.8140 ns&lt;/td&gt;&lt;td&gt;18.1102 ns&lt;/td&gt;&lt;td&gt;383.428 ns&lt;/td&gt;&lt;td&gt;0.0095&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;40 B&lt;/td&gt;
-&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;ParserInvocation_Roslyn&lt;/td&gt;&lt;td&gt;403.248 ns&lt;/td&gt;&lt;td&gt;8.1247 ns&lt;/td&gt;&lt;td&gt;21.9656 ns&lt;/td&gt;&lt;td&gt;399.653 ns&lt;/td&gt;&lt;td&gt;0.0095&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;40 B&lt;/td&gt;
-&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;ParserInvocation_SourceGenerator&lt;/td&gt;&lt;td&gt;385.155 ns&lt;/td&gt;&lt;td&gt;8.6582 ns&lt;/td&gt;&lt;td&gt;24.8419 ns&lt;/td&gt;&lt;td&gt;379.948 ns&lt;/td&gt;&lt;td&gt;0.0095&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;40 B&lt;/td&gt;
-&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;NativeCall&lt;/td&gt;&lt;td&gt;383.488 ns&lt;/td&gt;&lt;td&gt;7.7245 ns&lt;/td&gt;&lt;td&gt;21.4046 ns&lt;/td&gt;&lt;td&gt;380.181 ns&lt;/td&gt;&lt;td&gt;0.0095&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;40 B&lt;/td&gt;
+&lt;/thead&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td&gt;EmitIl&lt;/td&gt;&lt;td&gt;22.02 &amp;mu;s&lt;/td&gt;&lt;td&gt;0.495 &amp;mu;s&lt;/td&gt;&lt;td&gt;1.429 &amp;mu;s&lt;/td&gt;&lt;td&gt;1.2817&lt;/td&gt;&lt;td&gt;0.6409&lt;/td&gt;&lt;td&gt;0.0305&lt;/td&gt;&lt;td&gt;5 KB&lt;/td&gt;
+&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;ExpressionTree&lt;/td&gt;&lt;td&gt;683.68 &amp;mu;s&lt;/td&gt;&lt;td&gt;13.609 &amp;mu;s&lt;/td&gt;&lt;td&gt;31.268 &amp;mu;s&lt;/td&gt;&lt;td&gt;2.9297&lt;/td&gt;&lt;td&gt;0.9766&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;14 KB&lt;/td&gt;
+&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;Sigil&lt;/td&gt;&lt;td&gt;642.63 &amp;mu;s&lt;/td&gt;&lt;td&gt;12.305 &amp;mu;s&lt;/td&gt;&lt;td&gt;29.243 &amp;mu;s&lt;/td&gt;&lt;td&gt;112.3047&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;460 KB&lt;/td&gt;
+&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;Roslyn&lt;/td&gt;&lt;td&gt;71,605.64 &amp;mu;s&lt;/td&gt;&lt;td&gt;2,533.732 &amp;mu;s&lt;/td&gt;&lt;td&gt;7,350.817 &amp;mu;s&lt;/td&gt;&lt;td&gt;1000.0000&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;5,826 KB&lt;/td&gt;
+&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;
+
+&lt;h2 id=&quot;invocation-of-parser&quot;&gt;Invocation of parser&lt;/h2&gt;
+&lt;table&gt;
+&lt;thead&gt;&lt;tr&gt;&lt;th&gt;   Method&lt;/th&gt;&lt;th&gt; Mean&lt;/th&gt;&lt;th&gt;Error&lt;/th&gt;&lt;th&gt;StdDev&lt;/th&gt;&lt;th&gt;Ratio&lt;/th&gt;&lt;th&gt;RatioSD&lt;/th&gt;&lt;th&gt;Gen 0&lt;/th&gt;&lt;th&gt;Allocated&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td&gt;EmitIl&lt;/td&gt;&lt;td&gt;374.7 ns&lt;/td&gt;&lt;td&gt;7.75 ns&lt;/td&gt;&lt;td&gt;22.36 ns&lt;/td&gt;&lt;td&gt;1.02&lt;/td&gt;&lt;td&gt;0.08&lt;/td&gt;&lt;td&gt;0.0095&lt;/td&gt;&lt;td&gt;40 B&lt;/td&gt;
+&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;ExpressionTree&lt;/td&gt;&lt;td&gt;378.1 ns&lt;/td&gt;&lt;td&gt;7.56 ns&lt;/td&gt;&lt;td&gt;20.57 ns&lt;/td&gt;&lt;td&gt;1.03&lt;/td&gt;&lt;td&gt;0.08&lt;/td&gt;&lt;td&gt;0.0095&lt;/td&gt;&lt;td&gt;40 B&lt;/td&gt;
+&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;Reflection&lt;/td&gt;&lt;td&gt;13,625.0 ns&lt;/td&gt;&lt;td&gt;272.60 ns&lt;/td&gt;&lt;td&gt;750.81 ns&lt;/td&gt;&lt;td&gt;37.29&lt;/td&gt;&lt;td&gt;2.29&lt;/td&gt;&lt;td&gt;0.7782&lt;/td&gt;&lt;td&gt;3,256 B&lt;/td&gt;
+&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;Sigil&lt;/td&gt;&lt;td&gt;378.9 ns&lt;/td&gt;&lt;td&gt;7.69 ns&lt;/td&gt;&lt;td&gt;21.06 ns&lt;/td&gt;&lt;td&gt;1.03&lt;/td&gt;&lt;td&gt;0.07&lt;/td&gt;&lt;td&gt;0.0095&lt;/td&gt;&lt;td&gt;40 B&lt;/td&gt;
+&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;Roslyn&lt;/td&gt;&lt;td&gt;404.2 ns&lt;/td&gt;&lt;td&gt;7.55 ns&lt;/td&gt;&lt;td&gt;17.80 ns&lt;/td&gt;&lt;td&gt;1.10&lt;/td&gt;&lt;td&gt;0.07&lt;/td&gt;&lt;td&gt;0.0095&lt;/td&gt;&lt;td&gt;40 B&lt;/td&gt;
+&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;SourceGenerator&lt;/td&gt;&lt;td&gt;384.4 ns&lt;/td&gt;&lt;td&gt;7.79 ns&lt;/td&gt;&lt;td&gt;21.46 ns&lt;/td&gt;&lt;td&gt;1.05&lt;/td&gt;&lt;td&gt;0.08&lt;/td&gt;&lt;td&gt;0.0095&lt;/td&gt;&lt;td&gt;40 B&lt;/td&gt;
+&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;ManuallyWritten&lt;/td&gt;&lt;td&gt;367.8 ns&lt;/td&gt;&lt;td&gt;7.36 ns&lt;/td&gt;&lt;td&gt;15.68 ns&lt;/td&gt;&lt;td&gt;1.00&lt;/td&gt;&lt;td&gt;0.00&lt;/td&gt;&lt;td&gt;0.0095&lt;/td&gt;&lt;td&gt;40 B&lt;/td&gt;
 &lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;
 
 &lt;h1 id=&quot;source-code&quot;&gt;Source code&lt;/h1&gt;

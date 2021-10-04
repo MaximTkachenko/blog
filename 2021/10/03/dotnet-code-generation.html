@@ -9,15 +9,15 @@
 <meta property="og:locale" content="en_US" />
 <meta name="description" content="Introduction" />
 <meta property="og:description" content="Introduction" />
-<link rel="canonical" href="https://mtkachenko.me/blog/dotnet/2021/10/03/dotnet-code-generation.html" />
-<meta property="og:url" content="https://mtkachenko.me/blog/dotnet/2021/10/03/dotnet-code-generation.html" />
+<link rel="canonical" href="https://mtkachenko.me/blog/2021/10/03/dotnet-code-generation.html" />
+<meta property="og:url" content="https://mtkachenko.me/blog/2021/10/03/dotnet-code-generation.html" />
 <meta property="og:site_name" content="One more blog about software engineering" />
 <meta property="og:type" content="article" />
 <meta property="article:published_time" content="2021-10-03T00:00:00+02:00" />
 <meta name="twitter:card" content="summary" />
 <meta property="twitter:title" content="Dotnet code generation overview by example" />
 <script type="application/ld+json">
-{"mainEntityOfPage":{"@type":"WebPage","@id":"https://mtkachenko.me/blog/dotnet/2021/10/03/dotnet-code-generation.html"},"description":"Introduction","@type":"BlogPosting","url":"https://mtkachenko.me/blog/dotnet/2021/10/03/dotnet-code-generation.html","headline":"Dotnet code generation overview by example","dateModified":"2021-10-03T00:00:00+02:00","datePublished":"2021-10-03T00:00:00+02:00","@context":"https://schema.org"}</script>
+{"description":"Introduction","headline":"Dotnet code generation overview by example","dateModified":"2021-10-03T00:00:00+02:00","datePublished":"2021-10-03T00:00:00+02:00","@type":"BlogPosting","mainEntityOfPage":{"@type":"WebPage","@id":"https://mtkachenko.me/blog/2021/10/03/dotnet-code-generation.html"},"url":"https://mtkachenko.me/blog/2021/10/03/dotnet-code-generation.html","@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 <link rel="stylesheet" href="/blog/assets/main.css"><link type="application/atom+xml" rel="alternate" href="https://mtkachenko.me/blog/feed.xml" title="One more blog about software engineering" /></head>
 <body><header class="site-header" role="banner">
@@ -55,7 +55,7 @@
 
 <p>Let’s imagine our application receives a data from some source as a an array of strings (for simplicity only string, integer and datetime values are expected in an input array):</p>
 
-<figure class="highlight"><pre><code class="language-json" data-lang="json"><span class="p">{</span><span class="s2">"John McClane"</span><span class="p">,</span><span class="w"> </span><span class="s2">"1994-11-05T13:15:30"</span><span class="p">,</span><span class="w"> </span><span class="s2">"4455"</span><span class="p">}</span></code></pre></figure>
+<figure class="highlight"><pre><code class="language-json" data-lang="json"><span class="p">[</span><span class="s2">"John McClane"</span><span class="p">,</span><span class="w"> </span><span class="s2">"1994-11-05T13:15:30"</span><span class="p">,</span><span class="w"> </span><span class="s2">"4455"</span><span class="p">]</span></code></pre></figure>
 
 <p>I need a generic way to parse this input into an instance of a particular class. This is an interface to create a parser delegate (i.e. it accepts an array of strings as an input and returns an instance of <code class="language-plaintext highlighter-rouge">T</code> as an output):</p>
 
@@ -733,7 +733,7 @@ public class Parser : IParserFactory
 
 <h1 id="benchmarks">Benchmarks</h1>
 
-<p>The post wouldn’t be completed without benchamrks. Here I want to compare two things:</p>
+<p>The post wouldn’t be completed without benchmarks. Here I want to compare two things:</p>
 <ul>
   <li>warm up step, i.e. generation of parser;</li>
   <li>invocation of already generated parser.</li>
@@ -745,31 +745,38 @@ public class Parser : IParserFactory
 BenchmarkDotNet=v0.13.1, OS=Windows 10.0.19043.1237 (21H1/May2021Update)
 Intel Core i7-8550U CPU 1.80GHz (Kaby Lake R), 1 CPU, 8 logical and 4 physical cores
 .NET SDK=5.0.401
-[Host] : .NET 5.0.10 (5.0.1021.41214), X64 RyuJIT
-DefaultJob : .NET 5.0.10 (5.0.1021.41214), X64 RyuJIT
+  [Host]     : .NET 5.0.10 (5.0.1021.41214), X64 RyuJIT
+  DefaultJob : .NET 5.0.10 (5.0.1021.41214), X64 RyuJIT
 </code></pre>
 
+<h2 id="generation-of-parser">Generation of parser</h2>
 <table>
-<thead><tr><th> Method</th><th> Mean</th><th> Error</th><th> StdDev</th><th> Median</th><th>Gen 0</th><th>Gen 1</th><th>Allocated</th>
+<thead><tr><th>  Method</th><th>  Mean</th><th> Error</th><th>StdDev</th><th>Gen 0</th><th>Gen 1</th><th>Gen 2</th><th>Allocated</th>
 </tr>
-</thead><tbody><tr><td>GetParser_EmitIl</td><td>21,674.487 ns</td><td>432.3948 ns</td><td>1,205.3440 ns</td><td>21,405.957 ns</td><td>1.2817</td><td>0.6409</td><td>5,472 B</td>
-</tr><tr><td>GetParser_ExpressionTree</td><td>728,408.643 ns</td><td>16,212.6425 ns</td><td>47,548.8739 ns</td><td>715,700.293 ns</td><td>2.9297</td><td>0.9766</td><td>13,926 B</td>
-</tr><tr><td>GetParser_Sigil</td><td>668,290.456 ns</td><td>14,567.7839 ns</td><td>42,031.3875 ns</td><td>657,595.947 ns</td><td>112.3047</td><td>-</td><td>470,727 B</td>
-</tr><tr><td>GetParser_Roslyn</td><td>60,652,769.231 ns</td><td>1,199,616.1232 ns</td><td>2,804,064.0147 ns</td><td>60,564,942.857 ns</td><td>1000.0000</td><td>285.7143</td><td>6,257,459 B</td>
-</tr><tr><td>ParserInvocation_EmitIl</td><td>395.822 ns</td><td>8.5046 ns</td><td>25.0761 ns</td><td>390.066 ns</td><td>0.0095</td><td>-</td><td>40 B</td>
-</tr><tr><td>ParserInvocation_ExpressionTree</td><td>385.048 ns</td><td>7.7925 ns</td><td>21.8511 ns</td><td>380.575 ns</td><td>0.0095</td><td>-</td><td>40 B</td>
-</tr><tr><td>ParserInvocation_Reflection</td><td>13,064.371 ns</td><td>277.1491 ns</td><td>812.8303 ns</td><td>12,883.695 ns</td><td>0.7782</td><td>-</td><td>3,256 B</td>
-</tr><tr><td>ParserInvocation_Sigil</td><td>386.315 ns</td><td>7.8140 ns</td><td>18.1102 ns</td><td>383.428 ns</td><td>0.0095</td><td>-</td><td>40 B</td>
-</tr><tr><td>ParserInvocation_Roslyn</td><td>403.248 ns</td><td>8.1247 ns</td><td>21.9656 ns</td><td>399.653 ns</td><td>0.0095</td><td>-</td><td>40 B</td>
-</tr><tr><td>ParserInvocation_SourceGenerator</td><td>385.155 ns</td><td>8.6582 ns</td><td>24.8419 ns</td><td>379.948 ns</td><td>0.0095</td><td>-</td><td>40 B</td>
-</tr><tr><td>NativeCall</td><td>383.488 ns</td><td>7.7245 ns</td><td>21.4046 ns</td><td>380.181 ns</td><td>0.0095</td><td>-</td><td>40 B</td>
+</thead><tbody><tr><td>EmitIl</td><td>22.02 &mu;s</td><td>0.495 &mu;s</td><td>1.429 &mu;s</td><td>1.2817</td><td>0.6409</td><td>0.0305</td><td>5 KB</td>
+</tr><tr><td>ExpressionTree</td><td>683.68 &mu;s</td><td>13.609 &mu;s</td><td>31.268 &mu;s</td><td>2.9297</td><td>0.9766</td><td>-</td><td>14 KB</td>
+</tr><tr><td>Sigil</td><td>642.63 &mu;s</td><td>12.305 &mu;s</td><td>29.243 &mu;s</td><td>112.3047</td><td>-</td><td>-</td><td>460 KB</td>
+</tr><tr><td>Roslyn</td><td>71,605.64 &mu;s</td><td>2,533.732 &mu;s</td><td>7,350.817 &mu;s</td><td>1000.0000</td><td>-</td><td>-</td><td>5,826 KB</td>
+</tr></tbody></table>
+
+<h2 id="invocation-of-parser">Invocation of parser</h2>
+<table>
+<thead><tr><th>   Method</th><th> Mean</th><th>Error</th><th>StdDev</th><th>Ratio</th><th>RatioSD</th><th>Gen 0</th><th>Allocated</th>
+</tr>
+</thead><tbody><tr><td>EmitIl</td><td>374.7 ns</td><td>7.75 ns</td><td>22.36 ns</td><td>1.02</td><td>0.08</td><td>0.0095</td><td>40 B</td>
+</tr><tr><td>ExpressionTree</td><td>378.1 ns</td><td>7.56 ns</td><td>20.57 ns</td><td>1.03</td><td>0.08</td><td>0.0095</td><td>40 B</td>
+</tr><tr><td>Reflection</td><td>13,625.0 ns</td><td>272.60 ns</td><td>750.81 ns</td><td>37.29</td><td>2.29</td><td>0.7782</td><td>3,256 B</td>
+</tr><tr><td>Sigil</td><td>378.9 ns</td><td>7.69 ns</td><td>21.06 ns</td><td>1.03</td><td>0.07</td><td>0.0095</td><td>40 B</td>
+</tr><tr><td>Roslyn</td><td>404.2 ns</td><td>7.55 ns</td><td>17.80 ns</td><td>1.10</td><td>0.07</td><td>0.0095</td><td>40 B</td>
+</tr><tr><td>SourceGenerator</td><td>384.4 ns</td><td>7.79 ns</td><td>21.46 ns</td><td>1.05</td><td>0.08</td><td>0.0095</td><td>40 B</td>
+</tr><tr><td>ManuallyWritten</td><td>367.8 ns</td><td>7.36 ns</td><td>15.68 ns</td><td>1.00</td><td>0.00</td><td>0.0095</td><td>40 B</td>
 </tr></tbody></table>
 
 <h1 id="source-code">Source code</h1>
 
 <p>Here is <a href="https://github.com/MaximTkachenko/dotnet-code-generation-overview-by-example">github repository</a> with parser factories, unit tests and benchmarks.</p>
 
-  </div><a class="u-url" href="/blog/dotnet/2021/10/03/dotnet-code-generation.html" hidden></a>
+  </div><a class="u-url" href="/blog/2021/10/03/dotnet-code-generation.html" hidden></a>
 </article>
 
       </div>
