@@ -17,7 +17,7 @@
 <meta name="twitter:card" content="summary" />
 <meta property="twitter:title" content="Dotnet code generation overview by example" />
 <script type="application/ld+json">
-{"description":"Introduction","@type":"BlogPosting","url":"https://mtkachenko.me/blog/2021/10/03/dotnet-code-generation.html","headline":"Dotnet code generation overview by example","dateModified":"2021-10-03T00:00:00+02:00","datePublished":"2021-10-03T00:00:00+02:00","mainEntityOfPage":{"@type":"WebPage","@id":"https://mtkachenko.me/blog/2021/10/03/dotnet-code-generation.html"},"@context":"https://schema.org"}</script>
+{"description":"Introduction","headline":"Dotnet code generation overview by example","dateModified":"2021-10-03T00:00:00+02:00","datePublished":"2021-10-03T00:00:00+02:00","@type":"BlogPosting","mainEntityOfPage":{"@type":"WebPage","@id":"https://mtkachenko.me/blog/2021/10/03/dotnet-code-generation.html"},"url":"https://mtkachenko.me/blog/2021/10/03/dotnet-code-generation.html","@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 <link rel="stylesheet" href="/blog/assets/main.css"><link type="application/atom+xml" rel="alternate" href="https://mtkachenko.me/blog/feed.xml" title="One more blog about software engineering" /></head>
 <body><header class="site-header" role="banner">
@@ -47,11 +47,11 @@
   </header>
 
   <div class="post-content e-content" itemprop="articleBody">
-    <h1 id="introduction">Introduction</h1>
+    <h2 id="introduction">Introduction</h2>
 
 <p>Code generation is a very interesting topic. Instead of just writing code you can write code to write code. You can do code generation at compile time (new fancy source generators) and at runtime (expressions, emit IL). Anyway the idea to create methods and classes at runtime sounds like a magic to me. Runtime code generation feature is used quite heavily under the hood of DI frameworks, ORMs, different types of object mappers etc. Now when I have a sufficient understanding of the topic I realized that in the past I had some tasks which could be solved in more efficient and elegant way by using code generation. Unfortunately during those times I knew nothing about it. Searching the internet gave me results with quite high entry threshold and they didn’t give an entire understanding of the feature. Most of examples in articles are quite trivial so it’s still unclear how to apply it in practice. Here as the first step I want to describe a particular problem which could be solved with <a href="https://en.wikipedia.org/wiki/Metaprogramming">metaprogramming</a> and then to give an overview of different code generation approaches. There will be a lot of code.</p>
 
-<h1 id="task-description">Task description</h1>
+<h2 id="task-description">Task description</h2>
 
 <p>Let’s imagine our application receives a data from some source as an array of strings (for simplicity only string, integer and datetime values are expected in an input array):</p>
 
@@ -77,7 +77,7 @@
 <p>If array element can’t be parsed to the target type then it’s ignored.
 So as a general idea I don’t want to limit implementation by <code class="language-plaintext highlighter-rouge">Data</code> class only. I want to produce a parser delegate for any type with the proper attributes.</p>
 
-<h1 id="plain-c">Plain C#</h1>
+<h2 id="plain-c">Plain C#</h2>
 
 <p>First of all I want to write a plain C# code without code generation or reflection at all for a known type:</p>
 
@@ -98,7 +98,7 @@ So as a general idea I don’t want to limit implementation by <code class="lang
 
 <p>Quite simple, right? But now I want to generate the same code for an arbitrary type at runtime or compile time. Let’s go!</p>
 
-<h1 id="reflection">Reflection</h1>
+<h2 id="reflection">Reflection</h2>
 
 <p>In the first approach with <a href="https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/concepts/reflection">reflection</a> I’m not going to generate a parser delegate. Instead I’m going to create an instance of the target type and set its properties using reflection API.</p>
 
@@ -155,9 +155,9 @@ So as a general idea I don’t want to limit implementation by <code class="lang
 
 <p>It works and it’s quite readable. But it’s <a href="https://mattwarren.org/2016/12/14/Why-is-Reflection-slow/">slow</a> (check <a href="#benchmarks">benchmarks</a> section below too). If you want to call this code very often it could be an issue. I want to implement something more sophisticated using <strong>real</strong> code generation.</p>
 
-<h1 id="code-generation">Code generation</h1>
+<h2 id="code-generation">Code generation</h2>
 
-<h2 id="expression-trees">Expression trees</h2>
+<h3 id="expression-trees">Expression trees</h3>
 
 <p>From the <a href="https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/concepts/expression-trees/">official documentation</a>:</p>
 <blockquote>
@@ -241,7 +241,7 @@ So as a general idea I don’t want to limit implementation by <code class="lang
 	<span class="p">}</span>
 <span class="p">}</span></code></pre></figure>
 
-<h2 id="emit-il">Emit IL</h2>
+<h3 id="emit-il">Emit IL</h3>
 
 <p>Dotnet compiler transforms your C# code into intermediate language (<a href="https://en.wikipedia.org/wiki/Common_Intermediate_Language">CIL or just IL</a>) and then dotnet runtime translates IL into machine instructions. For instance, using <a href="https://sharplab.io/">sharplab.io</a> you can easily check how generated IL will look like:
 <img src="/blog/assets/sharplab_msil.png" alt="C# and corresponding IL from https://sharplab.io/" /></p>
@@ -336,7 +336,7 @@ So as a general idea I don’t want to limit implementation by <code class="lang
 	<span class="p">}</span>
 <span class="p">}</span></code></pre></figure>
 
-<h2 id="sigil">Sigil</h2>
+<h3 id="sigil">Sigil</h3>
 
 <ul>
   <li><a href="https://github.com/kevin-montrose/Sigil">A fail-fast validating helper for .NET CIL generation</a></li>
@@ -416,7 +416,7 @@ So as a general idea I don’t want to limit implementation by <code class="lang
 	<span class="p">}</span>
 <span class="p">}</span></code></pre></figure>
 
-<h2 id="cache-compiled-parsers">Cache compiled parsers</h2>
+<h3 id="cache-compiled-parsers">Cache compiled parsers</h3>
 
 <p>We have implemented three approaches to create a parser delegate: expression tree, emit IL and sigil. In all cases we have the same problem: <code class="language-plaintext highlighter-rouge">IParserFactory.GetParser</code> does a hard job (builiding an expression tree or emitting IL and then creating delegate) every time you call it. Solution is quite simple - just cache it:</p>
 
@@ -440,11 +440,11 @@ So as a general idea I don’t want to limit implementation by <code class="lang
 
 <p>Now we reuse compiled versions of delegates which is more efficient.</p>
 
-<h2 id="roslyn-based-approaches">Roslyn based approaches</h2>
+<h3 id="roslyn-based-approaches">Roslyn based approaches</h3>
 
 <p>Roslyn is a dotnet compiler platform which doesn’t only compile code but gives an ability to do syntax analysis and to generate code.</p>
 
-<h3 id="roslyn-runtime-code-generation">Roslyn runtime code generation</h3>
+<h4 id="roslyn-runtime-code-generation">Roslyn runtime code generation</h4>
 <ul>
   <li><a href="https://gunnarpeipman.com/using-roslyn-to-build-object-to-object-mapper/amp/">Using Roslyn to build object to object mapper</a></li>
 </ul>
@@ -597,7 +597,7 @@ public class RoslynGeneratedParserFactory : IParserFactory
     <span class="p">}</span><span class="err">
 </span><span class="s">}</span></code></pre></figure>
 
-<h3 id="source-generator">Source generator</h3>
+<h4 id="source-generator">Source generator</h4>
 <ul>
   <li>Overview of source generators from the <a href="https://docs.microsoft.com/en-us/dotnet/csharp/roslyn-sdk/source-generators-overview">official documentation</a></li>
 </ul>
@@ -731,7 +731,7 @@ public class Parser : IParserFactory
 </span><span class="s">		$"</span><span class="p">{</span><span class="n">typeSymbol</span><span class="p">.</span><span class="n">ContainingNamespace</span><span class="p">}.{</span><span class="n">typeSymbol</span><span class="p">.</span><span class="n">Name</span><span class="p">}</span><span class="s">";
 </span><span class="p">}</span></code></pre></figure>
 
-<h1 id="benchmarks">Benchmarks</h1>
+<h2 id="benchmarks">Benchmarks</h2>
 
 <p>The post wouldn’t be comprehensive without benchmarks. I would like to compare two things:</p>
 <ul>
@@ -749,7 +749,7 @@ Intel Core i7-8550U CPU 1.80GHz (Kaby Lake R), 1 CPU, 8 logical and 4 physical c
   DefaultJob : .NET 5.0.10 (5.0.1021.41214), X64 RyuJIT
 </code></pre>
 
-<h2 id="generation-of-parser">Generation of parser</h2>
+<h3 id="generation-of-parser">Generation of parser</h3>
 <table>
 <thead><tr><th>  Method</th><th>  Mean</th><th> Error</th><th>StdDev</th><th>Gen 0</th><th>Gen 1</th><th>Gen 2</th><th>Allocated</th>
 </tr>
@@ -759,7 +759,7 @@ Intel Core i7-8550U CPU 1.80GHz (Kaby Lake R), 1 CPU, 8 logical and 4 physical c
 </tr><tr><td>Roslyn</td><td>71,605.64 &mu;s</td><td>2,533.732 &mu;s</td><td>7,350.817 &mu;s</td><td>1000.0000</td><td>-</td><td>-</td><td>5,826 KB</td>
 </tr></tbody></table>
 
-<h2 id="invocation-of-parser">Invocation of parser</h2>
+<h3 id="invocation-of-parser">Invocation of parser</h3>
 <table>
 <thead><tr><th>   Method</th><th> Mean</th><th>Error</th><th>StdDev</th><th>Ratio</th><th>RatioSD</th><th>Gen 0</th><th>Allocated</th>
 </tr>
@@ -774,7 +774,7 @@ Intel Core i7-8550U CPU 1.80GHz (Kaby Lake R), 1 CPU, 8 logical and 4 physical c
 
 <p>All approaches besides direct usage of reflection give results almost identical to <a href="#plain-c">manually written C# parser</a>.</p>
 
-<h1 id="source-code">Source code</h1>
+<h2 id="source-code">Source code</h2>
 
 <p>Here is <a href="https://github.com/MaximTkachenko/dotnet-code-generation-overview-by-example">github repository</a> with parser factories, unit tests and benchmarks.</p>
 
