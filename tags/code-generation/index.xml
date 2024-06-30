@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
-    <title>posts on Software engineering blog without title</title>
-    <link>https://mtkachenko.me/blog/posts/</link>
-    <description>Recent content in posts on Software engineering blog without title</description>
+    <title>code generation on Software engineering blog without title</title>
+    <link>https://mtkachenko.me/blog/tags/code-generation/</link>
+    <description>Recent content in code generation on Software engineering blog without title</description>
     <generator>Hugo -- 0.124.1</generator>
     <language>en-us</language>
     <lastBuildDate>Sun, 03 Oct 2021 11:11:11 +0000</lastBuildDate>
-    <atom:link href="https://mtkachenko.me/blog/posts/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="https://mtkachenko.me/blog/tags/code-generation/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Dotnet code generation overview by example</title>
       <link>https://mtkachenko.me/blog/2021/10/03/dotnet-code-generation.html</link>
