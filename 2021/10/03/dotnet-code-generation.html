@@ -1,181 +1,58 @@
 <!DOCTYPE html>
-<html lang="en" dir="auto">
-
-<head><meta charset="utf-8">
-<meta http-equiv="X-UA-Compatible" content="IE=edge">
-<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<meta name="robots" content="index, follow">
-<title>Dotnet code generation overview by example | Software engineering blog without title</title>
-<meta name="keywords" content="dotnet, code generation">
-<meta name="description" content="Introduction Code generation is a very interesting topic. Instead of just writing code you can write code to write code. You can do code generation at compile time (new fancy source generators) and at runtime (expressions, emit IL). Anyway the idea to create methods and classes at runtime sounds like a magic to me. Runtime code generation feature is used quite heavily under the hood of DI frameworks, ORMs, different types of object mappers etc.">
-<meta name="author" content="">
-<link rel="canonical" href="https://mtkachenko.me/blog/2021/10/03/dotnet-code-generation.html">
-<link crossorigin="anonymous" href="/blog/assets/css/stylesheet.css" rel="preload stylesheet" as="style">
-<link rel="icon" href="https://mtkachenko.me/blog/favicon.ico">
-<link rel="icon" type="image/png" sizes="16x16" href="https://mtkachenko.me/blog/favicon-16x16.png">
-<link rel="icon" type="image/png" sizes="32x32" href="https://mtkachenko.me/blog/favicon-32x32.png">
-<link rel="apple-touch-icon" href="https://mtkachenko.me/blog/apple-touch-icon.png">
-<link rel="mask-icon" href="https://mtkachenko.me/blog/safari-pinned-tab.svg">
-<meta name="theme-color" content="#2e2e33">
-<meta name="msapplication-TileColor" content="#2e2e33">
-<link rel="alternate" hreflang="en" href="https://mtkachenko.me/blog/2021/10/03/dotnet-code-generation.html">
-<noscript>
-    <style>
-        #theme-toggle,
-        .top-link {
-            display: none;
-        }
-
-    </style>
-    <style>
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --theme: rgb(29, 30, 32);
-                --entry: rgb(46, 46, 51);
-                --primary: rgb(218, 218, 219);
-                --secondary: rgb(155, 156, 157);
-                --tertiary: rgb(65, 66, 68);
-                --content: rgb(196, 196, 197);
-                --code-block-bg: rgb(46, 46, 51);
-                --code-bg: rgb(55, 56, 62);
-                --border: rgb(51, 51, 51);
-            }
-
-            .list {
-                background: var(--theme);
-            }
-
-            .list:not(.dark)::-webkit-scrollbar-track {
-                background: 0 0;
-            }
-
-            .list:not(.dark)::-webkit-scrollbar-thumb {
-                border-color: var(--theme);
-            }
-        }
-
-    </style>
-</noscript><meta property="og:title" content="Dotnet code generation overview by example" />
+<html><head lang="en">
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge"><title>Dotnet code generation overview by example - Software engineering blog without title</title><meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="description" content="Introduction Code generation is a very interesting topic. Instead of just writing code you can write code to write code. You can do code generation at compile time (new fancy source generators) and at runtime (expressions, emit IL). Anyway the idea to create methods and classes at runtime sounds like a magic to me. Runtime code generation feature is used quite heavily under the hood of DI frameworks, ORMs, different types of object mappers etc." />
+	<meta property="og:image" content=""/>
+	<meta property="og:title" content="Dotnet code generation overview by example" />
 <meta property="og:description" content="Introduction Code generation is a very interesting topic. Instead of just writing code you can write code to write code. You can do code generation at compile time (new fancy source generators) and at runtime (expressions, emit IL). Anyway the idea to create methods and classes at runtime sounds like a magic to me. Runtime code generation feature is used quite heavily under the hood of DI frameworks, ORMs, different types of object mappers etc." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://mtkachenko.me/blog/2021/10/03/dotnet-code-generation.html" /><meta property="article:section" content="posts" />
 <meta property="article:published_time" content="2021-10-03T11:11:11+00:00" />
 <meta property="article:modified_time" content="2021-10-03T11:11:11+00:00" />
-
-<meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content="Dotnet code generation overview by example"/>
+<meta name="twitter:card" content="summary"/><meta name="twitter:title" content="Dotnet code generation overview by example"/>
 <meta name="twitter:description" content="Introduction Code generation is a very interesting topic. Instead of just writing code you can write code to write code. You can do code generation at compile time (new fancy source generators) and at runtime (expressions, emit IL). Anyway the idea to create methods and classes at runtime sounds like a magic to me. Runtime code generation feature is used quite heavily under the hood of DI frameworks, ORMs, different types of object mappers etc."/>
 
+	
+        <link href="https://mtkachenko.me/blog/css/fonts.11a1877508139eac0b5b4852ceb110c35641b3533321e66e39149e901ed5756b.css" rel="stylesheet">
+	
 
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position":  1 ,
-      "name": "posts",
-      "item": "https://mtkachenko.me/blog/posts/"
-    }, 
-    {
-      "@type": "ListItem",
-      "position":  2 ,
-      "name": "Dotnet code generation overview by example",
-      "item": "https://mtkachenko.me/blog/2021/10/03/dotnet-code-generation.html"
-    }
-  ]
-}
-</script>
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BlogPosting",
-  "headline": "Dotnet code generation overview by example",
-  "name": "Dotnet code generation overview by example",
-  "description": "Introduction Code generation is a very interesting topic. Instead of just writing code you can write code to write code. You can do code generation at compile time (new fancy source generators) and at runtime (expressions, emit IL). Anyway the idea to create methods and classes at runtime sounds like a magic to me. Runtime code generation feature is used quite heavily under the hood of DI frameworks, ORMs, different types of object mappers etc.",
-  "keywords": [
-    "dotnet", "code generation"
-  ],
-  "articleBody": "Introduction Code generation is a very interesting topic. Instead of just writing code you can write code to write code. You can do code generation at compile time (new fancy source generators) and at runtime (expressions, emit IL). Anyway the idea to create methods and classes at runtime sounds like a magic to me. Runtime code generation feature is used quite heavily under the hood of DI frameworks, ORMs, different types of object mappers etc. Now when I have a sufficient understanding of the topic I realized that in the past I had some tasks which could be solved in more efficient and elegant way by using code generation. Unfortunately during those times I knew nothing about it. Searching the internet gave me results with quite high entry threshold and they didn’t give an entire understanding of the feature. Most of examples in articles are quite trivial so it’s still unclear how to apply it in practice. Here as the first step I want to describe a particular problem which could be solved with metaprogramming and then to give an overview of different code generation approaches. There will be a lot of code.\nTask description Let’s imagine our application receives a data from some source as an array of strings (for simplicity only string, integer and datetime values are expected in an input array):\n[\"John McClane\", \"1994-11-05T13:15:30\", \"4455\"] I need a generic way to parse this input into the instance of a particular class. This is an interface to create a parser delegate (i.e. it accepts an array of strings as the input and returns an instance of T as the output):\npublic interface IParserFactory { Func\u003cstring[], T\u003e GetParser() where T : new(); } I use ParserOutputAttribute to identify classes used as parser’s output. And I use ArrayIndexAttribute to understand which property corresponds to each of the array elements:\n[ParserOutput] public class Data { [ArrayIndex(0)] public string Name { get; set; } // will be \"John McClane\" [ArrayIndex(2)] public int Number { get; set; } // will be 4455 [ArrayIndex(1)] public DateTime Birthday { get; set; } // will be 1994-11-05T13:15:30 } If array element can’t be parsed to the target type then it’s ignored. So as a general idea I don’t want to limit implementation by Data class only. I want to produce a parser delegate for any type with the proper attributes.\nPlain C# First of all I want to write a plain C# code without code generation or reflection at all for a known type:\nvar data = new Data(); if (0 \u003c inputArray.Length) { data.Name = inputArray[0]; } if (1 \u003c inputArray.Length \u0026\u0026 DateTime.TryParse(inputArray[1], out var bd)) { data.Birthday = bd; } if (2 \u003c inputArray.Length \u0026\u0026 int.TryParse(inputArray[2], out var n)) { data.Number = n; } return data; Quite simple, right? But now I want to generate the same code for an arbitrary type at runtime or compile time. Let’s go!\nReflection In the first approach with reflection I’m not going to generate a parser delegate. Instead I’m going to create an instance of the target type and set its properties using reflection API.\npublic class ReflectionParserFactory : IParserFactory { public Func\u003cstring[], T\u003e GetParser() where T : new() { return ArrayIndexParse; } private static T ArrayIndexParse(string[] data) where T : new() { // create a new instance of target type var instance = new T(); var props = typeof(T).GetProperties(BindingFlags.Instance | BindingFlags.Public); //go through all public and non-static properties //read and parse corresponding element in array and if success - set property value for (int i = 0; i \u003c props.Length; i++) { var attrs = props[i].GetCustomAttributes(typeof(ArrayIndexAttribute)).ToArray(); if (attrs.Length == 0) continue; int order = ((ArrayIndexAttribute)attrs[0]).Order; if (order \u003c 0 || order \u003e= data.Length) continue; if (props[i].PropertyType == typeof(string)) { props[i].SetValue(instance, data[order]); continue; } if (props[i].PropertyType == typeof(int)) { if (int.TryParse(data[order], out var intResult)) { props[i].SetValue(instance, intResult); } continue; } if (props[i].PropertyType == typeof(DateTime)) { if (DateTime.TryParse(data[order], out var dtResult)) { props[i].SetValue(instance, dtResult); } } } return instance; } } It works and it’s quite readable. But it’s slow (check benchmarks section below too). If you want to call this code very often it could be an issue. I want to implement something more sophisticated using real code generation.\nCode generation Expression trees From the official documentation:\nExpression trees represent code in a tree-like data structure, where each node is an expression, for example, a method call or a binary operation such as x \u003c y. You can compile and run code represented by expression trees.\nHow to execute expression trees Expression classes Expression trees give primitive building blocks like Expression.Call to call a method, Expression.Loop to add some repeating logic etc. Then using these blocks we build a parser delegate as a tree of instructions and finally compile it into the delegate at runtime.\npublic class ExpressionTreeParserFactory : IParserFactory { public Func\u003cstring[], T\u003e GetParser() where T : new() { var props = typeof(T).GetProperties(BindingFlags.Instance | BindingFlags.Public); //declare an input parameter of the delegate ParameterExpression inputArray = Expression.Parameter(typeof(string[]), \"inputArray\"); //declare an output parameter of the delegate ParameterExpression instance = Expression.Variable(typeof(T), \"instance\"); //create a new instance of target type var block = new List { Expression.Assign(instance, Expression.New(typeof(T).GetConstructors()[0])) }; var variables = new List {instance}; //go through all public and non-static properties foreach (var prop in props) { var attrs = prop.GetCustomAttributes(typeof(ArrayIndexAttribute)).ToArray(); if (attrs.Length == 0) continue; int order = ((ArrayIndexAttribute)attrs[0]).Order; if (order \u003c 0) continue; //validate an index from ArrayIndexAttribute var orderConst = Expression.Constant(order); var orderCheck = Expression.LessThan(orderConst, Expression.ArrayLength(inputArray)); if (prop.PropertyType == typeof(string)) { //set string property var stringPropertySet = Expression.Assign( Expression.Property(instance, prop), Expression.ArrayIndex(inputArray, orderConst)); block.Add(Expression.IfThen(orderCheck, stringPropertySet)); continue; } //get parser method from the list of available parsers (currently we parse only Int and DateTime) if (!TypeParsers.Parsers.TryGetValue(prop.PropertyType, out var parser)) { continue; } var parseResult = Expression.Variable(prop.PropertyType, \"parseResult\"); var parserCall = Expression.Call(parser, Expression.ArrayIndex(inputArray, orderConst), parseResult); var propertySet = Expression.Assign( Expression.Property(instance, prop), parseResult); //set property if an element of array is successfully parsed var ifSet = Expression.IfThen(parserCall, propertySet); block.Add(Expression.IfThen(orderCheck, ifSet)); variables.Add(parseResult); } block.Add(instance); //compile lambda expression into delegate return Expression.Lambda",
-  "wordCount" : "2575",
-  "inLanguage": "en",
-  "datePublished": "2021-10-03T11:11:11Z",
-  "dateModified": "2021-10-03T11:11:11Z",
-  "mainEntityOfPage": {
-    "@type": "WebPage",
-    "@id": "https://mtkachenko.me/blog/2021/10/03/dotnet-code-generation.html"
-  },
-  "publisher": {
-    "@type": "Organization",
-    "name": "Software engineering blog without title",
-    "logo": {
-      "@type": "ImageObject",
-      "url": "https://mtkachenko.me/blog/favicon.ico"
-    }
-  }
-}
-</script>
+	
+	<link rel="stylesheet" type="text/css" media="screen" href="https://mtkachenko.me/blog/css/main.fa747a9bb099b7bfd5d71b78a6e8ca2e23a425384e48bf533f1d357aeb61d265.css" />
+
+	
+	
+
+	
+	
+
+	
 </head>
-
-<body class="" id="top">
-<script>
-    if (localStorage.getItem("pref-theme") === "dark") {
-        document.body.classList.add('dark');
-    } else if (localStorage.getItem("pref-theme") === "light") {
-        document.body.classList.remove('dark')
-    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        document.body.classList.add('dark');
-    }
-
-</script>
-
-<header class="header">
-    <nav class="nav">
-        <div class="logo">
-            <a href="https://mtkachenko.me/blog/" accesskey="h" title="Software engineering blog without title (Alt + H)">Software engineering blog without title</a>
-            <div class="logo-switches">
-                <button id="theme-toggle" accesskey="t" title="(Alt + T)">
-                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
-                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round">
-                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                    </svg>
-                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
-                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="5"></circle>
-                        <line x1="12" y1="1" x2="12" y2="3"></line>
-                        <line x1="12" y1="21" x2="12" y2="23"></line>
-                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                        <line x1="1" y1="12" x2="3" y2="12"></line>
-                        <line x1="21" y1="12" x2="23" y2="12"></line>
-                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                    </svg>
-                </button>
-            </div>
-        </div>
-        <ul id="menu">
-        </ul>
-    </nav>
+<body>
+        <div class="content"><header>
+	<div class="main">
+		<a href="https://mtkachenko.me/">Software engineering blog without title</a>
+	</div>
+	<nav>
+		
+		
+	</nav>
 </header>
-<main class="main">
 
-<article class="post-single">
-  <header class="post-header">
-    
-    <h1 class="post-title entry-hint-parent">
-      Dotnet code generation overview by example
-    </h1>
-    <div class="post-meta"><span title='2021-10-03 11:11:11 +0000 UTC'>October 3, 2021</span>
+<main>
+	<article>
+		<div class="title">
+			<h1 class="title">Dotnet code generation overview by example</h1>
+			<div class="meta">Posted on Oct 3, 2021</div>
+		</div>
+		
 
-</div>
-  </header> 
-  <div class="post-content"><h2 id="introduction">Introduction<a hidden class="anchor" aria-hidden="true" href="#introduction">#</a></h2>
+		
+
+		<section class="body">
+			<h2 id="introduction">Introduction</h2>
 <p>Code generation is a very interesting topic. Instead of just writing code you can write code to write code. You can do code generation at compile time (new fancy source generators) and at runtime (expressions, emit IL). Anyway the idea to create methods and classes at runtime sounds like a magic to me. Runtime code generation feature is used quite heavily under the hood of DI frameworks, ORMs, different types of object mappers etc. Now when I have a sufficient understanding of the topic I realized that in the past I had some tasks which could be solved in more efficient and elegant way by using code generation. Unfortunately during those times I knew nothing about it. Searching the internet gave me results with quite high entry threshold and they didn&rsquo;t give an entire understanding of the feature. Most of examples in articles are quite trivial so it&rsquo;s still unclear how to apply it in practice. Here as the first step I want to describe a particular problem which could be solved with <a href="https://en.wikipedia.org/wiki/Metaprogramming">metaprogramming</a> and then to give an overview of different code generation approaches. There will be a lot of code.</p>
-<h2 id="task-description">Task description<a hidden class="anchor" aria-hidden="true" href="#task-description">#</a></h2>
+<h2 id="task-description">Task description</h2>
 <p>Let&rsquo;s imagine our application receives a data from some source as an array of strings (for simplicity only string, integer and datetime values are expected in an input array):</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>[<span style="color:#e6db74">&#34;John McClane&#34;</span>, <span style="color:#e6db74">&#34;1994-11-05T13:15:30&#34;</span>, <span style="color:#e6db74">&#34;4455&#34;</span>]
 </span></span></code></pre></div><p>I need a generic way to parse this input into the instance of a particular class. This is an interface to create a parser delegate (i.e. it accepts an array of strings as the input and returns an instance of <code>T</code> as the output):</p>
@@ -193,7 +70,7 @@
 </span></span><span style="display:flex;"><span>}
 </span></span></code></pre></div><p>If array element can&rsquo;t be parsed to the target type then it&rsquo;s ignored.
 So as a general idea I don&rsquo;t want to limit implementation by <code>Data</code> class only. I want to produce a parser delegate for any type with the proper attributes.</p>
-<h2 id="plain-c">Plain C#<a hidden class="anchor" aria-hidden="true" href="#plain-c">#</a></h2>
+<h2 id="plain-c">Plain C#</h2>
 <p>First of all I want to write a plain C# code without code generation or reflection at all for a known type:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-csharp" data-lang="csharp"><span style="display:flex;"><span><span style="color:#66d9ef">var</span> data = <span style="color:#66d9ef">new</span> Data();
 </span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> (<span style="color:#ae81ff">0</span> &lt; inputArray.Length)
@@ -210,7 +87,7 @@ So as a general idea I don&rsquo;t want to limit implementation by <code>Data</c
 </span></span><span style="display:flex;"><span>}
 </span></span><span style="display:flex;"><span><span style="color:#66d9ef">return</span> data;
 </span></span></code></pre></div><p>Quite simple, right? But now I want to generate the same code for an arbitrary type at runtime or compile time. Let&rsquo;s go!</p>
-<h2 id="reflection">Reflection<a hidden class="anchor" aria-hidden="true" href="#reflection">#</a></h2>
+<h2 id="reflection">Reflection</h2>
 <p>In the first approach with <a href="https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/concepts/reflection">reflection</a> I&rsquo;m not going to generate a parser delegate. Instead I&rsquo;m going to create an instance of the target type and set its properties using reflection API.</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-csharp" data-lang="csharp"><span style="display:flex;"><span><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">ReflectionParserFactory</span> : IParserFactory
 </span></span><span style="display:flex;"><span>{
@@ -263,8 +140,8 @@ So as a general idea I don&rsquo;t want to limit implementation by <code>Data</c
 </span></span><span style="display:flex;"><span>	}
 </span></span><span style="display:flex;"><span>}
 </span></span></code></pre></div><p>It works and it&rsquo;s quite readable. But it&rsquo;s <a href="https://mattwarren.org/2016/12/14/Why-is-Reflection-slow/">slow</a> (check <a href="#benchmarks">benchmarks</a> section below too). If you want to call this code very often it could be an issue. I want to implement something more sophisticated using <strong>real</strong> code generation.</p>
-<h2 id="code-generation">Code generation<a hidden class="anchor" aria-hidden="true" href="#code-generation">#</a></h2>
-<h3 id="expression-trees">Expression trees<a hidden class="anchor" aria-hidden="true" href="#expression-trees">#</a></h3>
+<h2 id="code-generation">Code generation</h2>
+<h3 id="expression-trees">Expression trees</h3>
 <p>From the <a href="https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/concepts/expression-trees/">official documentation</a>:</p>
 <blockquote>
 <p>Expression trees represent code in a tree-like data structure, where each node is an expression, for example, a method call or a binary operation such as x &lt; y. You can compile and run code represented by expression trees.</p>
@@ -343,10 +220,9 @@ So as a general idea I don&rsquo;t want to limit implementation by <code>Data</c
 </span></span><span style="display:flex;"><span>			inputArray).Compile();
 </span></span><span style="display:flex;"><span>	}
 </span></span><span style="display:flex;"><span>}
-</span></span></code></pre></div><h3 id="emit-il">Emit IL<a hidden class="anchor" aria-hidden="true" href="#emit-il">#</a></h3>
+</span></span></code></pre></div><h3 id="emit-il">Emit IL</h3>
 <p>Dotnet compiler transforms your C# code into intermediate language (<a href="https://en.wikipedia.org/wiki/Common_Intermediate_Language">CIL or just IL</a>) and then dotnet runtime translates IL into machine instructions. For instance, using <a href="https://sharplab.io/">sharplab.io</a> you can easily check how generated IL will look like:
-<img loading="lazy" src="/blog/posts/images/sharplab_msil.png" alt="C# and corresponding IL from https://sharplab.io/"  />
-</p>
+<img src="/blog/posts/images/sharplab_msil.png" alt="C# and corresponding IL from https://sharplab.io/"></p>
 <ul>
 <li><a href="https://docs.microsoft.com/en-us/dotnet/api/system.reflection.emit?view=net-5.0">System.Reflection.Emit</a></li>
 <li><a href="https://docs.microsoft.com/en-us/dotnet/framework/reflection-and-codedom/how-to-define-and-execute-dynamic-methods">How to: Define and Execute Dynamic Methods</a></li>
@@ -435,7 +311,7 @@ So as a general idea I don&rsquo;t want to limit implementation by <code>Data</c
 </span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> (Func&lt;<span style="color:#66d9ef">string</span>[], T&gt;)dm.CreateDelegate(<span style="color:#66d9ef">typeof</span>(Func&lt;<span style="color:#66d9ef">string</span>[], T&gt;));
 </span></span><span style="display:flex;"><span>	}
 </span></span><span style="display:flex;"><span>}
-</span></span></code></pre></div><h3 id="sigil">Sigil<a hidden class="anchor" aria-hidden="true" href="#sigil">#</a></h3>
+</span></span></code></pre></div><h3 id="sigil">Sigil</h3>
 <ul>
 <li><a href="https://github.com/kevin-montrose/Sigil">A fail-fast validating helper for .NET CIL generation</a></li>
 </ul>
@@ -511,7 +387,7 @@ So as a general idea I don&rsquo;t want to limit implementation by <code>Data</c
 </span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> il.CreateDelegate();
 </span></span><span style="display:flex;"><span>	}
 </span></span><span style="display:flex;"><span>}
-</span></span></code></pre></div><h3 id="cache-compiled-parsers">Cache compiled parsers<a hidden class="anchor" aria-hidden="true" href="#cache-compiled-parsers">#</a></h3>
+</span></span></code></pre></div><h3 id="cache-compiled-parsers">Cache compiled parsers</h3>
 <p>We have implemented three approaches to create a parser delegate: expression tree, emit IL and sigil. In all cases we have the same problem: <code>IParserFactory.GetParser</code> does a hard job (builiding an expression tree or emitting IL and then creating delegate) every time you call it. Solution is quite simple - just cache it:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-csharp" data-lang="csharp"><span style="display:flex;"><span><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">CachedParserFactory</span> : IParserFactory
 </span></span><span style="display:flex;"><span>{
@@ -531,9 +407,9 @@ So as a general idea I don&rsquo;t want to limit implementation by <code>Data</c
 </span></span><span style="display:flex;"><span>	}
 </span></span><span style="display:flex;"><span>}
 </span></span></code></pre></div><p>Now we reuse compiled versions of delegates which is more efficient.</p>
-<h3 id="roslyn-based-approaches">Roslyn based approaches<a hidden class="anchor" aria-hidden="true" href="#roslyn-based-approaches">#</a></h3>
+<h3 id="roslyn-based-approaches">Roslyn based approaches</h3>
 <p>Roslyn is a dotnet compiler platform which doesn&rsquo;t only compile code but gives an ability to do syntax analysis and to generate code.</p>
-<h4 id="roslyn-runtime-code-generation">Roslyn runtime code generation<a hidden class="anchor" aria-hidden="true" href="#roslyn-runtime-code-generation">#</a></h4>
+<h4 id="roslyn-runtime-code-generation">Roslyn runtime code generation</h4>
 <ul>
 <li><a href="https://gunnarpeipman.com/using-roslyn-to-build-object-to-object-mapper/amp/">Using Roslyn to build object to object mapper</a></li>
 </ul>
@@ -683,7 +559,7 @@ So as a general idea I don&rsquo;t want to limit implementation by <code>Data</c
 </span></span><span style="display:flex;"><span>        }
 </span></span><span style="display:flex;"><span>    }
 </span></span><span style="display:flex;"><span>}
-</span></span></code></pre></div><h4 id="source-generator">Source generator<a hidden class="anchor" aria-hidden="true" href="#source-generator">#</a></h4>
+</span></span></code></pre></div><h4 id="source-generator">Source generator</h4>
 <ul>
 <li>Overview of source generators from the <a href="https://docs.microsoft.com/en-us/dotnet/csharp/roslyn-sdk/source-generators-overview">official documentation</a></li>
 </ul>
@@ -814,7 +690,7 @@ So as a general idea I don&rsquo;t want to limit implementation by <code>Data</c
 </span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">private</span> <span style="color:#66d9ef">static</span> <span style="color:#66d9ef">string</span> GetFullName(ITypeSymbol typeSymbol) =&gt;
 </span></span><span style="display:flex;"><span>		<span style="color:#e6db74">$&#34;{typeSymbol.ContainingNamespace}.{typeSymbol.Name}&#34;</span>;
 </span></span><span style="display:flex;"><span>}
-</span></span></code></pre></div><h2 id="benchmarks">Benchmarks<a hidden class="anchor" aria-hidden="true" href="#benchmarks">#</a></h2>
+</span></span></code></pre></div><h2 id="benchmarks">Benchmarks</h2>
 <p>The post wouldn&rsquo;t be comprehensive without benchmarks. I would like to compare two things:</p>
 <ul>
 <li>warm up step, i.e. generation of parser;</li>
@@ -823,7 +699,7 @@ So as a general idea I don&rsquo;t want to limit implementation by <code>Data</c
 <p>Benchmarks are measured using <a href="https://github.com/dotnet/BenchmarkDotNet">BenchmarkDotNet</a>. <code>μs</code> - microsecond, <code>ns</code> - nanosecond, 1 μs = 1000 ns.</p>
 <!-- raw HTML omitted -->
 <!-- raw HTML omitted -->
-<h3 id="generation-of-parser">Generation of parser<a hidden class="anchor" aria-hidden="true" href="#generation-of-parser">#</a></h3>
+<h3 id="generation-of-parser">Generation of parser</h3>
 <table>
 <thead>
 <tr>
@@ -880,7 +756,7 @@ So as a general idea I don&rsquo;t want to limit implementation by <code>Data</c
 </tr>
 </tbody>
 </table>
-<h3 id="invocation-of-parser">Invocation of parser<a hidden class="anchor" aria-hidden="true" href="#invocation-of-parser">#</a></h3>
+<h3 id="invocation-of-parser">Invocation of parser</h3>
 <table>
 <thead>
 <tr>
@@ -968,90 +844,37 @@ So as a general idea I don&rsquo;t want to limit implementation by <code>Data</c
 </tbody>
 </table>
 <p>All approaches besides direct usage of reflection give results almost identical to <a href="#plain-c">manually written C# parser</a>.</p>
-<h2 id="source-code">Source code<a hidden class="anchor" aria-hidden="true" href="#source-code">#</a></h2>
+<h2 id="source-code">Source code</h2>
 <p>Here is <a href="https://github.com/MaximTkachenko/dotnet-code-generation-overview-by-example">github repository</a> with parser factories, unit tests and benchmarks.</p>
 
+		</section>
 
+		<div class="post-tags">
+			
+			
+			<nav class="nav tags">
+				<ul class="tags">
+					
+					<li><a href="/tags/dotnet">dotnet</a></li>
+					
+					<li><a href="/tags/code-generation">code generation</a></li>
+					
+				</ul>
+			</nav>
+			
+			
+		</div>
+		</article>
+</main>
+<footer>
+  <div style="display:flex"></div>
+  <div class="footer-info">
+    2024  <a
+      href="https://github.com/athul/archie">Archie Theme</a> | Built with <a href="https://gohugo.io">Hugo</a>
   </div>
-
-  <footer class="post-footer">
-    <ul class="post-tags">
-      <li><a href="https://mtkachenko.me/blog/tags/dotnet/">dotnet</a></li>
-      <li><a href="https://mtkachenko.me/blog/tags/code-generation/">code generation</a></li>
-    </ul>
-  </footer>
-</article>
-    </main>
-    
-<footer class="footer">
-        <span>&copy; 2024 <a href="https://mtkachenko.me/blog/">Software engineering blog without title</a></span> · 
-
-    <span>
-        Powered by
-        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
-        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
-    </span>
 </footer>
-<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
-        <path d="M12 6H0l6-6z" />
-    </svg>
-</a>
 
-<script>
-    let menu = document.getElementById('menu')
-    if (menu) {
-        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
-        menu.onscroll = function () {
-            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
-        }
-    }
 
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        anchor.addEventListener("click", function (e) {
-            e.preventDefault();
-            var id = this.getAttribute("href").substr(1);
-            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
-                    behavior: "smooth"
-                });
-            } else {
-                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
-            }
-            if (id === "top") {
-                history.replaceState(null, null, " ");
-            } else {
-                history.pushState(null, null, `#${id}`);
-            }
-        });
-    });
-
-</script>
-<script>
-    var mybutton = document.getElementById("top-link");
-    window.onscroll = function () {
-        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
-            mybutton.style.visibility = "visible";
-            mybutton.style.opacity = "1";
-        } else {
-            mybutton.style.visibility = "hidden";
-            mybutton.style.opacity = "0";
-        }
-    };
-
-</script>
-<script>
-    document.getElementById("theme-toggle").addEventListener("click", () => {
-        if (document.body.className.includes("dark")) {
-            document.body.classList.remove('dark');
-            localStorage.setItem("pref-theme", 'light');
-        } else {
-            document.body.classList.add('dark');
-            localStorage.setItem("pref-theme", 'dark');
-        }
-    })
-
-</script>
-</body>
-
+</div>
+    </body>
 </html>
